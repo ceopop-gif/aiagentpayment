@@ -36,7 +36,11 @@ export function signWebhook({ secret, timestamp, rawBody }) {
 export async function createWebhookEndpoint({ admin, merchantId, name, url, events, secretStore }) {
   await assertSafeWebhookUrl(url);
   const secret = crypto.randomBytes(32).toString('hex');
-  const secretRef = await secretStore.put(`webhook/${merchantId}/${crypto.randomUUID()}`, secret);
+  const secretRef = await secretStore.put(
+    `webhook/${merchantId}/${crypto.randomUUID()}`,
+    secret,
+    { merchantId, purpose: 'webhook_signing' }
+  );
   const secretHint = `${secret.slice(0, 4)}…${secret.slice(-4)}`;
 
   const { data, error } = await admin.from('webhook_endpoints').insert({
