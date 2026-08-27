@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AnnyPay Store</title>
+<link rel="stylesheet" href="assets/public.css">
+<style>
+.catalog{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px}.product-card{background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px}.product-card h3{margin:0;font-size:20px}.product-card .price{font-size:26px;margin:4px 0}.product-card .btn{text-align:center;text-decoration:none;margin-top:auto}.store-actions{display:flex;gap:8px;flex-wrap:wrap}.empty{padding:28px;text-align:center;color:#6b7280;background:#fff;border:1px dashed #d1d5db;border-radius:18px;margin-top:20px}@media(max-width:860px){.catalog{grid-template-columns:1fr 1fr}}@media(max-width:600px){.catalog{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><div class="logo">A</div><div>AnnyPay <span class="muted">Online Store</span></div></div>
+  <div id="message" class="hidden"></div>
+  <main id="storefront" class="hidden">
+    <section class="hero">
+      <span class="pill">AnnyPay Secure Commerce</span>
+      <h1 id="storeName"></h1>
+      <p id="storeDescription" class="muted"></p>
+      <div class="store-actions"><span class="pill" id="productCount">0 สินค้า</span><span class="pill">ข้อมูลจากหลังบ้านแบบ Real-time</span></div>
+    </section>
+    <section id="catalog" class="catalog"></section>
+    <div id="emptyCatalog" class="empty hidden">ยังไม่มีสินค้าที่เปิดขาย กรุณากลับมาใหม่อีกครั้ง</div>
+  </main>
+</div>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/store.js"></script>
+</body>
+</html>
