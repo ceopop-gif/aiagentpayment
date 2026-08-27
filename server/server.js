@@ -12,6 +12,8 @@ import { processInboundPaymentWebhook } from './webhooks/inbound.js';
 import { dispatchOutboundEvent } from './webhooks/outbound.js';
 import { registerWebhook } from './services/webhook-service.js';
 import { runAutomationsForEvent } from './automation/runner.js';
+import { getStoreBilling, createTokenPurchaseOrder } from './services/billing-service.js';
+import { startStoreSubscription } from './services/subscription-service.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -36,6 +38,7 @@ const server = createServer(async (req, res) => {
         service: 'annypay-ai-commerce',
         database: true,
         ai: Boolean(aiProvider),
+        billing: true,
         paymentProviders: Object.keys(getPaymentProviders())
       });
     }
@@ -52,12 +55,59 @@ const server = createServer(async (req, res) => {
         prompt: body.prompt,
         context: body.context || {},
         adapters: getPaymentProviders(),
-        secretStore,
         dispatchOutbound,
         runAutomations,
         confirmationToken: body.confirmationToken || null
       });
       return json(res, 200, result);
+    }
+
+    if (url.pathname.startsWith('/api/billing/store/') && req.method === 'GET') {
+      const user = await authenticate(req);
+      const storeId = decodeURIComponent(url.pathname.split('/').pop());
+      const merchantId = url.searchParams.get('merchantId');
+      if (!merchantId || !storeId) return json(res, 400, { error: 'merchantId and storeId are required' });
+      const result = await getStoreBilling({ admin, merchantId, userId: user.id, storeId });
+      return json(res, 200, result);
+    }
+
+    if (url.pathname === '/api/billing/subscription' && req.method === 'POST') {
+      const user = await authenticate(req);
+      const body = await readJson(req);
+      if (!body.merchantId || !body.storeId || !body.planId) {
+        return json(res, 400, { error: 'merchantId, storeId and planId are required' });
+      }
+      const result = await startStoreSubscription({
+        admin,
+        merchantId: body.merchantId,
+        userId: user.id,
+        storeId: body.storeId,
+        planId: body.planId,
+        billingProvider: body.billingProvider || process.env.BILLING_PROVIDER || null
+      });
+      return json(res, 201, result);
+    }
+
+    if (url.pathname === '/api/billing/token-purchase' && req.method === 'POST') {
+      const user = await authenticate(req);
+      const body = await readJson(req);
+      if (!body.merchantId || !body.storeId || !body.packId) {
+        return json(res, 400, { error: 'merchantId, storeId and packId are required' });
+      }
+      const result = await createTokenPurchaseOrder({
+        admin,
+        merchantId: body.merchantId,
+        userId: user.id,
+        storeId: body.storeId,
+        packId: body.packId,
+        quantity: Number(body.quantity || 1),
+        billingProvider: body.billingProvider || process.env.BILLING_PROVIDER || null
+      });
+      return json(res, 201, {
+        purchase: result,
+        next_step: 'CREATE_VERIFIED_BILLING_PAYMENT',
+        warning: 'Tokens are granted only after verified payment.'
+      });
     }
 
     if (url.pathname === '/api/webhooks/out' && req.method === 'POST') {
@@ -96,14 +146,23 @@ const server = createServer(async (req, res) => {
     return serveStatic(url.pathname, res);
   } catch (error) {
     console.error(error);
-    const status = /Unauthorized/.test(error.message) ? 401 : /Forbidden/.test(error.message) ? 403 : 500;
-    return json(res, status, { error: status === 500 ? 'internal_error' : error.message, message: status === 500 ? error.message : undefined });
+    const billingCode = error.code || error.message || '';
+    const status = /Unauthorized/.test(error.message) ? 401
+      : /Forbidden/.test(error.message) ? 403
+      : /SUBSCRIPTION_REQUIRED|SUBSCRIPTION_EXPIRED|INSUFFICIENT_AI_TOKENS/.test(billingCode) ? 402
+      : 500;
+    return json(res, status, {
+      error: status === 500 ? 'internal_error' : (error.code || error.message),
+      message: error.userMessage || (status === 500 ? error.message : undefined),
+      next_action: error.nextAction || undefined
+    });
   }
 });
 
 server.listen(port, () => {
   console.log(`AnnyPay running on http://localhost:${port}`);
   console.log(`AI Gateway: ${aiProvider ? 'configured' : 'not configured'}`);
+  console.log(`Billing: enabled`);
   console.log(`Payment Providers: ${Object.keys(getPaymentProviders()).join(', ') || 'none'}`);
 });
 
