@@ -1,52 +1,105 @@
 # AnnyPay Database V1 Setup
 
-AnnyPay Database V1 is designed for PostgreSQL/Supabase and follows the merchant-isolated architecture defined in `SKILL.md`.
+AnnyPay Database V1 uses PostgreSQL/Supabase and follows the merchant-isolated architecture in `SKILL.md`.
 
-## 1. Create Supabase project
+## Current implementation
 
-Create a new Supabase project and keep these values outside Git:
+The root `index.html` is now connected to Supabase-ready application code and supports:
 
-- Project URL
-- Anon public key
-- Service role key (server only)
+- Magic Link authentication by email
+- Merchant onboarding
+- Multi-Merchant selector
+- Live Dashboard metrics
+- Store creation + list
+- Product creation + list
+- Order list
+- Merchant / KYC / Payment status
+- Row Level Security per Merchant
 
-Copy `.env.example` to your deployment environment and replace placeholders there. Never commit the real service role key or payment secrets.
+Payment-authoritative writes remain server-only.
 
-## 2. Create schema
+## 1. Create a Supabase project
+
+Create a Supabase project and obtain:
+
+- Project URL (public)
+- Anon key (public browser key)
+- Service role key (secret, server only)
+
+Never put the service role key or payment-provider secrets in `config.js` or frontend code.
+
+## 2. Run SQL in this exact order
 
 Open Supabase SQL Editor and run:
 
 1. `database/schema.sql`
 2. `database/policies.sql`
+3. `database/onboarding.sql`
 
-This creates Merchant, Store, Product, SalePage, Customer, Order, Payment, Settlement and AI audit tables.
+The third file creates the secure `bootstrap_merchant(...)` RPC used after the first login.
 
-## 3. Authentication flow
+## 3. Configure authentication
 
-Use Supabase Auth for account creation and sign-in. After the first login:
+The frontend uses Supabase Magic Link / OTP authentication instead of collecting passwords in AnnyPay UI.
 
-1. Create `profiles` row for `auth.uid()`.
-2. Create a `merchants` row with `owner_user_id = auth.uid()`.
-3. Create `merchant_members` row with role `OWNER`.
-4. All merchant-facing queries then pass through Row Level Security.
+In Supabase Authentication URL settings, add the deployed AnnyPay URL to the allowed Redirect URLs.
 
-## 4. Frontend connection
+For local testing, add your local URL as well.
 
-`src/lib/supabase.js` contains the browser-side Supabase client helper. Only the public/anon key belongs in frontend code.
+## 4. Connect the frontend
 
-The current root `index.html` is still the UI prototype. Next integration step is to replace demo values with queries for:
+For a permanent shared deployment, edit `config.js` with the two PUBLIC values:
 
-- current merchant
-- stores
-- products
-- orders
-- payment transactions
-- settlements
-- AI actions
+```js
+window.ANNYPAY_CONFIG = {
+  SUPABASE_URL: "https://YOUR_PROJECT.supabase.co",
+  SUPABASE_ANON_KEY: "YOUR_PUBLIC_ANON_KEY"
+};
+```
 
-## 5. Payment security
+Do not place `SUPABASE_SERVICE_ROLE_KEY` in this file.
 
-The browser must never directly write these authoritative records:
+If `config.js` is blank, AnnyPay displays a setup screen where an administrator can paste the Project URL and Anon Key for that browser only. Those values are stored in browser localStorage.
+
+## 5. Merchant onboarding flow
+
+After authentication:
+
+1. User enters business name and basic Merchant information.
+2. Frontend calls `bootstrap_merchant(...)`.
+3. Database creates/updates `profiles`.
+4. Database creates a `merchants` row.
+5. Database creates `merchant_members` with role `OWNER`.
+6. Dashboard reloads through Row Level Security.
+
+## 6. Live Dashboard rules
+
+The dashboard reads real data for the selected Merchant:
+
+- number of stores
+- number of products
+- today's orders
+- today's `PAID` orders
+- today's paid sales total
+- recent orders
+
+No demo sales totals are used after Supabase is connected.
+
+## 7. Store / Product CRUD
+
+Merchant members can create and read Store/Product data through RLS.
+
+The current UI supports:
+
+- create Store
+- list Stores
+- create Product linked to a Store
+- list Products
+- read Orders
+
+## 8. Payment security
+
+The browser must never directly write authoritative records:
 
 - `payment_transactions`
 - `payment_webhooks`
@@ -54,15 +107,13 @@ The browser must never directly write these authoritative records:
 - `settlements`
 - payment credentials
 
-Use a trusted server with the Supabase service role and the connected payment-provider API.
+Use a trusted backend with the Supabase service role and the real payment-provider adapter.
 
-`server/payment-webhook.js` intentionally fails signature verification until the real provider adapter is configured. Do not weaken this behavior for testing production payments.
+`server/payment-webhook.js` intentionally fails signature verification until a provider-specific verifier is configured.
 
-## 6. Payment state rule
+## 9. Payment state rule
 
-Only a verified provider webhook/server reconciliation may move a transaction to `PAID`.
-
-Expected flow:
+Only a verified provider webhook or trusted server reconciliation may move a transaction to `PAID`.
 
 Customer Payment → Provider → Signed Webhook → Verify Signature → Validate Transaction → Update Payment → Update Order → Notify Merchant/Customer
 
@@ -81,12 +132,12 @@ Customer Payment → Provider → Signed Webhook → Verify Signature → Valida
 - Settlements
 - AI Sessions / AI Actions
 
-## Next build phase
+## Next phase
 
-1. Create Supabase project.
-2. Run schema + policies.
-3. Connect login screen.
-4. Connect Merchant Dashboard to live data.
-5. Connect Store/Product CRUD.
-6. Connect Order creation.
-7. Add provider-specific Payment Adapter + Webhook.
+1. Create the real Supabase project.
+2. Run the three SQL files.
+3. Put Project URL + Anon Key in `config.js`.
+4. Test Magic Link login and Merchant onboarding.
+5. Add Customer + Order creation flow.
+6. Add SalePage generation and checkout.
+7. Connect the real Payment Provider Adapter + verified webhook.
