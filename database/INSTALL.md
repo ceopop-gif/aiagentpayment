@@ -15,6 +15,9 @@ Run in Supabase SQL Editor in this exact order:
 11. `payouts.sql`
 12. `store-balance-ledger.sql`
 13. `store-balance-functions.sql`
+14. `audit-logs.sql`
+
+`audit-logs.sql` ต้องรันหลังตารางทั้งหมด เพื่อให้ Generic Audit Trigger ผูกกับ Store, Product, Content, SalePage, Order, Payment, Webhook, Billing, Token, Payout, Withdrawal และ Store Balance ได้ครบ
 
 ## Server secrets
 
@@ -27,7 +30,12 @@ AI_GATEWAY_API_KEY
 AI_MODEL
 BILLING_PROVIDER
 PAYMENT_* provider variables
+LOG_IP_HASH_KEY
+ANNYPAY_LOG_FILE (optional)
 ```
+
+`LOG_IP_HASH_KEY` ใช้ HMAC-hash IP ก่อนบันทึก หากไม่กำหนด ระบบจะไม่เก็บ IP hash  
+`ANNYPAY_LOG_FILE` เป็นทางเลือกสำหรับ JSONL บน Host ที่มี Durable Disk; ระบบส่ง Structured JSON ไป stdout เสมอ
 
 For the optional normalized HMAC payout adapter:
 
@@ -43,13 +51,14 @@ PAYOUT_STATUS_PATH=/payouts/{id}
 PAYOUT_SIGNATURE_HEADER=x-signature
 ```
 
-No payout provider is active unless explicitly configured. Never put service-role keys, master keys, provider secrets, webhook secrets, or full bank account numbers in Browser/GitHub.
+No payout provider is active unless explicitly configured. Never put service-role keys, master keys, provider secrets, webhook secrets, raw IP, access tokens, full bank account numbers or card data in Browser/GitHub.
 
 ## Important pages
 
 ```text
 /index.html            Merchant Login / Home
 /backoffice.html       AI Backoffice
+/activity-logs.html    Unified Activity Logs + Login Sessions
 /billing.html          Membership + AI Tokens
 /payouts.html          Store Balance + Payout Accounts + Withdrawals
 /commerce-admin.html   SalePage + Payment Link Builder
@@ -64,6 +73,11 @@ No payout provider is active unless explicitly configured. Never put service-rol
 GET  /api/health
 POST /api/ai/command
 
+POST /api/logs/client
+POST /api/logs/auth
+GET  /api/logs?merchantId=...
+GET  /api/sessions?merchantId=...
+
 GET  /api/payout/balance?merchantId=...&storeId=...
 GET  /api/payout/accounts?merchantId=...&storeId=...
 POST /api/payout/accounts
@@ -77,6 +91,82 @@ POST /api/webhooks/payout/:provider
 POST /api/webhooks/in/:provider
 POST /api/webhooks/out
 ```
+
+## Unified Activity / Login / Audit Logging
+
+`activity_logs` เป็น Append-only source สำหรับ:
+
+```text
+AUTH
+FRONTEND
+BACKOFFICE
+API
+DATABASE
+AI
+PAYMENT
+PAYOUT
+BILLING
+WEBHOOK
+SECURITY
+SYSTEM
+```
+
+แต่ละ Log ระบุ:
+
+```text
+เวลา
+Event
+Source
+Severity
+Actor user/email/type
+Session
+Merchant / Store
+Request / Trace ID
+Route / Method / HTTP status / Duration
+Resource
+Success / Error
+Sanitized metadata
+Before / After data สำหรับ Database change
+```
+
+`user_sessions` ตอบว่าใคร Login เมื่อไร, Last seen, Logout เมื่อไร และ Session ยัง Active หรือไม่
+
+### Log coverage
+
+```text
+Browser page view / click / form / client error
+→ /api/logs/client
+
+Supabase login/session/logout
+→ /api/logs/auth
+→ user_sessions
+
+Every Node API request
+→ request_id + structured audit
+
+Important table INSERT/UPDATE/DELETE
+→ database audit trigger
+
+AI action / Payment / Webhook / Billing / Payout
+→ business table log + API/request log + database change log
+```
+
+### Sensitive-data rule
+
+ระบบ Logging ต้องไม่เก็บ:
+
+- Password
+- Access/Refresh Token
+- Authorization/Cookie
+- Service Role
+- API/Private Key
+- Webhook Secret
+- เลขบัญชีเต็ม
+- เลขบัตร/CVV
+- Raw sensitive provider payload
+- ค่าจาก Form/Input โดยอัตโนมัติ
+
+Merchant อ่าน Log ได้เฉพาะ `merchant_id` ที่ตนเป็นสมาชิกผ่าน RLS/Backend authorization
 
 ## One Database / Store Isolation
 
@@ -140,21 +230,6 @@ total_paid_out
 - Withdrawal cannot accept an arbitrary bank account number.
 - Destination + amount + fee + net + currency are immutable after request creation.
 
-## Risk / Policy
-
-Per-store `store_payout_policies` supports:
-
-```text
-hold_minutes
-min_withdrawal
-max_withdrawal_per_request
-daily_withdrawal_limit
-manual_review_above
-status
-```
-
-If a request hits manual-review policy it remains `REVIEWING` and cannot be submitted to Provider until trusted operations approval is implemented.
-
 ## Authority Rules
 
 Browser and AI cannot mark any of these as final `PAID`:
@@ -180,4 +255,7 @@ Before real money production, configure and test end-to-end:
 - idempotency and replay tests
 - rate limits and fraud controls
 - queue/worker for webhook/payout jobs
-- audit/alerts/backups
+- centralized log retention/archival policy
+- alert rules for AUTH failures, ERROR/CRITICAL, Payment mismatch and Payout failure
+- audit export access control
+- backups and recovery drills
