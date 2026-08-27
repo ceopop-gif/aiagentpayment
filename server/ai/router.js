@@ -5,10 +5,10 @@ import { createProduct, updateProduct } from '../services/product-service.js';
 import { generateContent, approveContent } from '../services/content-service.js';
 import { createSalePage, publishSalePage } from '../services/salepage-service.js';
 import { createPaymentIntent } from '../services/payment-service.js';
-import { createPaymentLink } from '../services/payment-link-service.js';
 import { getOrder, salesReport } from '../services/order-service.js';
-import { registerWebhook, testWebhook } from '../services/webhook-service.js';
-import { createAutomationRule } from '../services/automation-service.js';
+import {
+  requireAiEntitlement, consumeAiUsage, getStoreBilling, createTokenPurchaseOrder
+} from '../services/billing-service.js';
 
 const HIGH_RISK = new Set([
   'REFUND_PAYMENT','CANCEL_PAYMENT','CHANGE_SETTLEMENT_ACCOUNT',
@@ -22,8 +22,11 @@ const DOMAIN_BY_INTENT = {
   CREATE_SALEPAGE:'salepage', EDIT_SALEPAGE:'salepage', PUBLISH_SALEPAGE:'salepage',
   CREATE_PAYMENT_LINK:'payment', CONNECT_PAYMENT:'payment', CHECK_PAYMENT:'payment', CREATE_PAYMENT_INTENT:'payment',
   CREATE_WEBHOOK_ENDPOINT:'webhook', TEST_WEBHOOK:'webhook',
-  CHECK_ORDER:'order', SALES_REPORT:'analytics', CREATE_AUTOMATION:'automation'
+  CHECK_ORDER:'order', SALES_REPORT:'analytics', CREATE_AUTOMATION:'automation',
+  CHECK_SUBSCRIPTION:'billing', CHECK_AI_TOKENS:'billing', BUY_AI_TOKENS:'billing'
 };
+
+const NON_GENERATIVE_BILLING_INTENTS = new Set(['CHECK_SUBSCRIPTION','CHECK_AI_TOKENS','BUY_AI_TOKENS']);
 
 export async function executeAiCommand({
   admin,
@@ -33,7 +36,6 @@ export async function executeAiCommand({
   prompt,
   context = {},
   adapters = {},
-  secretStore,
   dispatchOutbound,
   runAutomations,
   confirmationToken = null
@@ -42,15 +44,44 @@ export async function executeAiCommand({
   await requireMerchantMember(admin, merchantId, userId);
 
   let classification;
+  let routingBilling = null;
+
   if (aiProvider?.classifyIntent) {
+    // AI routing itself consumes provider tokens. A store with an ACTIVE/TRIAL
+    // subscription and available tokens is therefore required before calling it.
     const skill = await buildSkillContext();
+    const estimatedRoutingMinimum = Math.max(1, Math.ceil((skill.length + prompt.length) / 4));
+    routingBilling = await requireAiEntitlement({
+      admin,
+      merchantId,
+      userId,
+      storeId: context.billingStoreId || context.storeId || null,
+      minimumTokens: estimatedRoutingMinimum
+    });
+
     classification = await aiProvider.classifyIntent({
-      system: 'You are Anny AI Command Router. Return structured intent data only and follow the supplied skill.',
+      system: 'You are Anny AI Command Router. Return only structured intent data and follow the supplied skill.',
       skill,
       prompt,
       merchantContext: context
     });
+
+    const routingCharge = await consumeAiUsage({
+      admin,
+      merchantId,
+      userId,
+      storeId: routingBilling.storeId,
+      intent: 'ROUTE_INTENT',
+      provider: aiProvider.name,
+      model: classification?.model || null,
+      response: classification,
+      prompt: `${skill}\n${prompt}`,
+      source: 'AI_ROUTER',
+      metadata: { requested_intent: classification?.intent || null }
+    });
+    routingBilling.remainingAfterRouting = routingCharge.balance;
   } else {
+    // Development fallback does not call an AI model, therefore no token is charged.
     classification = fallbackIntent(prompt);
   }
 
@@ -64,7 +95,7 @@ export async function executeAiCommand({
       merchantId, userId, prompt, intent, domain,
       target: parameters.id || null,
       status: 'REQUIRES_CONFIRMATION',
-      result: { message: 'This action requires explicit confirmation.' }
+      result: { message: 'This action requires explicit confirmation.', billing: routingBilling?.remainingAfterRouting || null }
     });
   }
 
@@ -72,28 +103,31 @@ export async function executeAiCommand({
     return auditAndReturn(admin, {
       merchantId, userId, prompt, intent, domain,
       status: 'REQUIRES_CONFIRMATION',
-      result: { missing: classification.missing, message: 'Additional information is required.' }
+      result: { missing: classification.missing, message: 'Additional information is required.', billing: routingBilling?.remainingAfterRouting || null }
     });
   }
 
   try {
     const result = await dispatchIntent({
       intent, parameters, admin, aiProvider, merchantId, userId,
-      adapters, secretStore, dispatchOutbound, runAutomations
+      context, adapters, dispatchOutbound, runAutomations,
+      billingStoreId: routingBilling?.storeId || context.billingStoreId || context.storeId || null
     });
 
     return auditAndReturn(admin, {
       merchantId, userId, prompt, intent, domain,
       target: result?.id || result?.transaction?.id || parameters.id || null,
-      status: 'SUCCESS', result
+      status: 'SUCCESS',
+      result: { ...result, ai_token_balance: routingBilling?.remainingAfterRouting || undefined }
     });
   } catch (error) {
+    const friendly = billingError(error);
     await auditAndReturn(admin, {
       merchantId, userId, prompt, intent, domain,
       target: parameters.id || null,
-      status: 'FAILED', result: { error: error.message }
+      status: 'FAILED', result: { error: error.message, code: error.code || null, ...friendly }
     });
-    throw error;
+    throw Object.assign(error, friendly ? { userMessage: friendly.message, nextAction: friendly.next_action } : {});
   }
 }
 
@@ -109,17 +143,32 @@ async function dispatchIntent(ctx) {
     case 'CREATE_PRODUCT': return createProduct({ ...common, input: ctx.parameters });
     case 'EDIT_PRODUCT': return updateProduct({ ...common, productId: ctx.parameters.productId, patch: ctx.parameters.patch || {} });
     case 'CREATE_CONTENT':
-    case 'CREATE_PROMOTION': return generateContent({ ...common, input: ctx.parameters, aiProvider: ctx.aiProvider });
+    case 'CREATE_PROMOTION': return generateContent({
+      ...common,
+      input: { ...ctx.parameters, billingStoreId: ctx.billingStoreId },
+      aiProvider: ctx.aiProvider
+    });
     case 'APPROVE_CONTENT': return approveContent({ ...common, contentId: ctx.parameters.contentId });
     case 'CREATE_SALEPAGE': return createSalePage({ ...common, input: ctx.parameters });
     case 'PUBLISH_SALEPAGE': return publishSalePage({ ...common, salePageId: ctx.parameters.salePageId });
-    case 'CREATE_PAYMENT_LINK': return createPaymentLink({ ...common, input: ctx.parameters });
     case 'CREATE_PAYMENT_INTENT': return createPaymentIntent({ ...common, orderId: ctx.parameters.orderId, provider: ctx.parameters.provider, adapters: ctx.adapters });
-    case 'CHECK_ORDER': return getOrder({ admin:ctx.admin, merchantId:ctx.merchantId, userId:ctx.userId, orderNo:ctx.parameters.orderNo });
+    case 'CHECK_ORDER': return getOrder({ admin:ctx.admin, merchantId:ctx.merchantId, userId:ctx.userId, orderId:ctx.parameters.orderId, orderNo:ctx.parameters.orderNo });
     case 'SALES_REPORT': return salesReport({ admin:ctx.admin, merchantId:ctx.merchantId, userId:ctx.userId, from:ctx.parameters.from, to:ctx.parameters.to });
-    case 'CREATE_WEBHOOK_ENDPOINT': return registerWebhook({ admin:ctx.admin, merchantId:ctx.merchantId, userId:ctx.userId, input:ctx.parameters, secretStore:ctx.secretStore });
-    case 'TEST_WEBHOOK': return testWebhook({ admin:ctx.admin, merchantId:ctx.merchantId, userId:ctx.userId, endpointId:ctx.parameters.endpointId, secretStore:ctx.secretStore });
-    case 'CREATE_AUTOMATION': return createAutomationRule({ admin:ctx.admin, merchantId:ctx.merchantId, userId:ctx.userId, input:ctx.parameters });
+    case 'CHECK_SUBSCRIPTION':
+    case 'CHECK_AI_TOKENS': {
+      const storeId = ctx.parameters.storeId || ctx.billingStoreId;
+      if (!storeId) throw new Error('storeId is required');
+      return getStoreBilling({ admin:ctx.admin, merchantId:ctx.merchantId, userId:ctx.userId, storeId });
+    }
+    case 'BUY_AI_TOKENS': {
+      const storeId = ctx.parameters.storeId || ctx.billingStoreId;
+      if (!storeId || !ctx.parameters.packId) throw new Error('storeId and packId are required');
+      return createTokenPurchaseOrder({
+        admin:ctx.admin, merchantId:ctx.merchantId, userId:ctx.userId,
+        storeId, packId:ctx.parameters.packId, quantity:Number(ctx.parameters.quantity || 1),
+        billingProvider:ctx.parameters.provider || null
+      });
+    }
     default: throw new Error(`Intent ${ctx.intent} is registered but its service handler is not implemented yet`);
   }
 }
@@ -132,25 +181,41 @@ async function auditAndReturn(admin, { merchantId, userId, prompt, intent, domai
     intent,
     tool: `anny.${domain}`,
     target: target ? String(target) : null,
-    result: { ...result, skill_version: '2.0.0' },
+    result: { ...result, skill_version: '2.0.0', billing_policy: 'store-subscription-ai-token-v1' },
     status
   });
   if (error) console.error('AI audit write failed', error);
   return { intent, domain, status, result };
 }
 
+function billingError(error) {
+  const code = error?.code || error?.message || '';
+  if (/SUBSCRIPTION_REQUIRED/.test(code)) return {
+    message: 'ร้านนี้ยังไม่มีสมาชิกที่ใช้งานอยู่ กรุณาเลือกแพ็กเกจรายเดือนก่อนใช้ AI',
+    next_action: 'OPEN_SUBSCRIPTION_PLANS'
+  };
+  if (/SUBSCRIPTION_EXPIRED|PAST_DUE/.test(code)) return {
+    message: 'สมาชิกของร้านหมดอายุหรือมียอดค้าง กรุณาต่ออายุสมาชิกก่อนใช้ AI',
+    next_action: 'RENEW_SUBSCRIPTION'
+  };
+  if (/INSUFFICIENT_AI_TOKENS/.test(code)) return {
+    message: 'AI Token ของร้านไม่เพียงพอ กรุณาซื้อ Token เพิ่มเพื่อทำรายการต่อ',
+    next_action: 'BUY_AI_TOKENS'
+  };
+  return null;
+}
+
 function fallbackIntent(prompt) {
   const p = prompt.toLowerCase();
-  const name = extractAfter(prompt, 'ชื่อ');
-  if (/สร้างร้าน|create store/.test(p)) return { intent:'CREATE_STORE', parameters:{ storeName:name||null }, missing:name?[]:['storeName'] };
+  if (/token|โทเคน|เครดิต ai/.test(p) && /ซื้อ|เพิ่ม|เติม/.test(p)) return { intent:'BUY_AI_TOKENS', parameters:{}, missing:['storeId','packId'] };
+  if (/token|โทเคน|เครดิต ai/.test(p) && /เหลือ|เช็ก|ตรวจ|balance/.test(p)) return { intent:'CHECK_AI_TOKENS', parameters:{}, missing:['storeId'] };
+  if (/สมาชิก|subscription|แพ็กเกจ/.test(p) && /เช็ก|สถานะ|เหลือ|ปัจจุบัน/.test(p)) return { intent:'CHECK_SUBSCRIPTION', parameters:{}, missing:['storeId'] };
+  if (/สร้างร้าน|create store/.test(p)) return { intent:'CREATE_STORE', parameters:{ storeName: extractAfter(prompt, 'ชื่อ') || null }, missing:['storeName'].filter(x => !extractAfter(prompt, 'ชื่อ')) };
   if (/เพิ่มสินค้า|สร้างสินค้า|create product/.test(p)) return { intent:'CREATE_PRODUCT', parameters:{}, missing:['storeId','productName','price'] };
   if (/คอนเทนต์|content|แคปชั่น|headline|โฆษณา/.test(p)) return { intent:'CREATE_CONTENT', parameters:{ contentType:'SALEPAGE_COPY', prompt }, missing:['productId'] };
   if (/salepage|หน้าขาย/.test(p)) return { intent:'CREATE_SALEPAGE', parameters:{}, missing:['storeId','productId'] };
-  if (/payment link|ลิงก์รับเงิน|ลิงค์รับเงิน/.test(p)) return { intent:'CREATE_PAYMENT_LINK', parameters:{}, missing:['amount','description'] };
   if (/payment intent|เปิดรับเงิน/.test(p)) return { intent:'CREATE_PAYMENT_INTENT', parameters:{}, missing:['orderId','provider'] };
-  if (/order|ออเดอร์|คำสั่งซื้อ/.test(p)) return { intent:'CHECK_ORDER', parameters:{}, missing:['orderNo'] };
-  if (/ยอดขาย|sales report|ขายได้เท่า/.test(p)) return { intent:'SALES_REPORT', parameters:{}, missing:[] };
-  if (/webhook/.test(p)) return { intent:'CREATE_WEBHOOK_ENDPOINT', parameters:{}, missing:['name','url','events'] };
+  if (/ยอดขาย|sales report/.test(p)) return { intent:'SALES_REPORT', parameters:{}, missing:[] };
   return { intent:null, parameters:{}, missing:[] };
 }
 
