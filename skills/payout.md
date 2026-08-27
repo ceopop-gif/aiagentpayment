@@ -1,21 +1,49 @@
-# AnnyPay Payout & Withdrawal Skill
+# AnnyPay Payout, Balance & Withdrawal Skill
 
 ## Purpose
-แต่ละร้าน (`store_id`) สามารถลงทะเบียนบัญชีรับเงินได้สูงสุด 5 บัญชี และถอนเงินออกได้เฉพาะบัญชีที่ลงทะเบียนกับร้านนั้นและมีสถานะ `ACTIVE` พร้อม `verified_at` แล้วเท่านั้น
+แต่ละร้าน (`store_id`) มี Balance ของตัวเองใน Database กลาง และลงทะเบียนบัญชีรับเงินได้สูงสุด 5 บัญชี ถอนเงินได้เฉพาะบัญชีของร้านนั้นที่ `ACTIVE` + verified แล้วเท่านั้น
+
+## Money Source of Truth
+Current balance ต้องอ่านจาก `store_balances` ไม่คำนวณใหม่จาก Browser และมี `store_balance_ledger` เป็นประวัติ immutable สำหรับ Audit
+
+Balance buckets:
+```text
+pending_balance   เงินจาก Payment PAID ที่ยังอยู่ในช่วง Hold
+available_balance เงินที่ถอนออกได้
+reserved_balance  เงินที่ถูกจองไว้ให้ Withdrawal แล้ว
+total_paid_out    ยอดถอนสำเร็จสะสม
+```
+
+## Payment → Balance Flow
+```text
+Payment Provider
+→ Verified payment.paid Webhook
+→ payment_transactions = PAID
+→ credit_paid_payment_to_store_balance()
+→ Pending Balance
+→ hold_minutes ครบ
+→ release_matured_store_funds()
+→ Available Balance
+```
+
+ทุก Credit/Release ต้องมี idempotency key เพื่อไม่ให้ webhook retry ทำยอดซ้ำ
 
 ## Core Rules
-1. Database เดียว แต่บัญชีถอนเงินแยกตาม `store_id`.
-2. ร้านหนึ่งมีบัญชีรับเงินได้ไม่เกิน 5 บัญชีที่ยังไม่ `REMOVED`.
-3. Full account number ห้ามเก็บใน Browser, AI prompt, log หรือ plain-text client state.
-4. Full account number ต้องเก็บผ่าน trusted Secret Store; DB ฝั่ง merchant เก็บเฉพาะ `account_number_ref`, `last4`, fingerprint และข้อมูลแสดงผล.
-5. บัญชีใหม่เริ่ม `PENDING_VERIFICATION` และห้ามถอนจนกว่าจะ `ACTIVE` + verified.
-6. Withdrawal Request ต้องอ้าง `payout_account_id`; ห้ามกรอกเลขบัญชีปลายทางอิสระตอนถอน.
-7. Backend และ DB ต้องตรวจว่า payout account เป็นของ `merchant_id` + `store_id` เดียวกัน.
-8. Withdrawal destination snapshot, amount และ currency ต้อง immutable หลังสร้างคำขอ.
-9. AI/Browser ห้ามตั้ง Withdrawal เป็น `PAID` เอง; ต้องมาจาก trusted payout provider / bank transfer confirmation / reconciliation.
-10. การเพิ่ม ลบ เปลี่ยน หรือเปิดใช้งานบัญชีถอนเงินเป็น High-Risk Action ต้องตรวจ Role และ Explicit Confirmation.
-11. การถอนเงินต้องบันทึก Audit และ provider reference ทุกครั้ง.
-12. ถ้าบัญชีถูก `DISABLED` หรือ `REMOVED` จะสร้าง Withdrawal ใหม่ไม่ได้ แต่ประวัติ Withdrawal เดิมต้องยังอ่านได้จาก snapshot.
+1. Database เดียว แต่ Balance/บัญชีถอน/Withdrawal แยกด้วย `merchant_id + store_id`.
+2. ร้านหนึ่งมีบัญชีรับเงินได้สูงสุด 5 บัญชีที่ยังไม่ `REMOVED`.
+3. Full bank account number ห้ามอยู่ใน Browser log, AI prompt หรือ plain-text DB; เก็บผ่าน Secret Store เท่านั้น.
+4. บัญชีใหม่ = `PENDING_VERIFICATION`; ถอนเงินไม่ได้จน `ACTIVE` + `verified_at`.
+5. Withdrawal ต้องอ้าง `payout_account_id`; ห้ามกรอกบัญชีปลายทางใหม่ในขั้นถอน.
+6. ตอนสร้าง Withdrawal ต้อง reserve เงินแบบ atomic: `Available → Reserved` ก่อนส่ง Provider.
+7. ถ้า Available ไม่พอ ให้ตอบ `INSUFFICIENT_AVAILABLE_BALANCE` และห้ามสร้าง payout.
+8. Withdrawal amount/fee/net/destination snapshot แก้ย้อนหลังไม่ได้.
+9. ถ้า Provider ยืนยัน `PAID`: `Reserved → total_paid_out`.
+10. ถ้า Provider `FAILED/REJECTED/CANCELLED`: `Reserved → Available` คืนอัตโนมัติแบบ idempotent.
+11. AI/Browser ห้ามตั้ง Withdrawal เป็น `PAID` เอง.
+12. Payout Provider ต้องผ่าน Adapter Interface และ Webhook ต้อง Verify Signature.
+13. Risk policy ต่อ Store ปรับได้: hold, min/max per request, daily limit, manual-review threshold.
+14. Manual review/risk block ต้องหยุดก่อน Provider submission.
+15. Ledger row ห้าม UPDATE/DELETE; correction ใช้ ADJUSTMENT row ใหม่.
 
 ## Account Status
 ```text
@@ -26,12 +54,12 @@ DISABLED
 REJECTED
 REMOVED
 ```
-
-Only `ACTIVE` + `verified_at != null` is withdrawable.
+Only `ACTIVE` + verified is eligible.
 
 ## Withdrawal Status
 ```text
 REQUESTED
+HELD
 REVIEWING
 APPROVED
 PROCESSING
@@ -39,43 +67,53 @@ PAID
 FAILED
 REJECTED
 CANCELLED
-HELD
-```
-
-## Registration Flow
-```text
-Merchant / Owner
-→ Add payout account
-→ Encrypt full account number in Secret Store
-→ Save masked account + fingerprint in payout_accounts
-→ PENDING_VERIFICATION
-→ Verify account ownership / bank validation
-→ VERIFIED
-→ Activate
-→ ACTIVE
-→ Eligible for Withdrawal
 ```
 
 ## Withdrawal Flow
 ```text
-Store available balance
-→ Select registered payout_account_id
-→ Backend validates SAME store + ACTIVE + verified
-→ Create withdrawal_requests snapshot
-→ REQUESTED
-→ Risk / balance / hold checks
-→ APPROVED
-→ Payout Provider / Bank Transfer
+Available Balance
+→ Select ACTIVE payout_account_id
+→ Explicit confirmation
+→ Create immutable withdrawal snapshot
+→ Atomic Reserve (Available → Reserved)
+→ Risk PASS = HELD
+→ Submit to configured Payout Provider
 → PROCESSING
-→ Provider confirmation
+→ Signed Provider Webhook / authoritative response
 → PAID
+→ Reserved decreases + total_paid_out increases
 ```
 
-## AI Intent Examples
-- แสดงบัญชีถอนเงินของร้านนี้
-- เพิ่มบัญชีรับเงินให้ร้านนี้
-- ตั้งบัญชีนี้เป็นบัญชีหลัก
-- ถอนเงิน 10,000 บาทเข้าบัญชีที่ลงทะเบียนไว้
-- เช็กสถานะการถอนล่าสุด
+Failure flow:
+```text
+PROCESSING/HELD
+→ Provider FAILED/REJECTED
+→ release_store_withdrawal()
+→ Reserved decreases
+→ Available restored
+```
 
-AI must never ask the user to paste a full bank account number into an ordinary chat prompt if a secure account-entry form is available.
+## Payout Provider Adapter
+```text
+verifyAccount()
+createPayout()
+getPayoutStatus()
+verifyWebhook()
+normalizeWebhookEvent()
+```
+No provider is considered connected until its adapter and secrets are explicitly configured.
+
+## AI Rules
+Allowed assistance:
+- แสดงยอดรอ Hold / ยอดถอนได้ / ยอดจองถอน
+- แสดงบัญชีรับเงินที่ลงทะเบียน
+- เช็กสถานะ Withdrawal
+- เตรียม Withdrawal จากบัญชีที่ ACTIVE
+
+High Risk:
+- REQUEST_WITHDRAWAL
+- SET_DEFAULT_PAYOUT_ACCOUNT
+- REMOVE_PAYOUT_ACCOUNT
+- CHANGE_PAYOUT_ACCOUNT
+
+AI must never ask the user to paste a full bank account number into ordinary chat when `payouts.html` secure form is available.
