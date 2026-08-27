@@ -35,9 +35,11 @@ export async function recordClientActivity({ admin, user = null, body = {}, req 
   let storeId = validUuid(body.storeId);
   let store = null;
 
-  if (user && merchantId) {
-    await requireMerchantMember(admin, merchantId, user.id);
-  } else if (!user) {
+  if (user) {
+    const resolved = await resolveAuthenticatedContext({ admin, userId:user.id, merchantId, storeId });
+    merchantId = resolved.merchantId;
+    storeId = resolved.storeId;
+  } else {
     merchantId = null;
     if (storeId) {
       const { data, error } = await admin.from('stores')
@@ -54,6 +56,7 @@ export async function recordClientActivity({ admin, user = null, body = {}, req 
       if (error) throw error;
       if (data?.status === 'PUBLISHED') store = data;
     }
+
     if (!store && body.resourceType === 'payment_link' && validUuid(body.resourceId)) {
       const { data, error } = await admin.from('payment_links')
         .select('id,merchant_id,store_id,status')
@@ -117,9 +120,13 @@ export async function recordAuthActivity({ admin, user = null, body = {}, req })
   if (!user && !['AUTH_LOGIN_FAILED'].includes(eventName)) throw new Error('Unauthorized');
 
   const context = getRequestAuditContext(req) || {};
-  const merchantId = validUuid(body.merchantId);
-  const storeId = validUuid(body.storeId);
-  if (user && merchantId) await requireMerchantMember(admin, merchantId, user.id);
+  let merchantId = validUuid(body.merchantId);
+  let storeId = validUuid(body.storeId);
+  if (user) {
+    const resolved = await resolveAuthenticatedContext({ admin, userId:user.id, merchantId, storeId });
+    merchantId = resolved.merchantId;
+    storeId = resolved.storeId;
+  }
 
   const sessionKey = cleanText(body.sessionKey || context.sessionKey, 160);
   const metadata = sanitize(body.metadata || {});
@@ -168,12 +175,7 @@ export async function recordAuthActivity({ admin, user = null, body = {}, req })
   return { accepted: true, event_id: result.data?.event_id || null };
 }
 
-export async function listActivityLogs({
-  admin,
-  merchantId,
-  userId,
-  filters = {}
-}) {
+export async function listActivityLogs({ admin, merchantId, userId, filters = {} }) {
   await requireMerchantMember(admin, merchantId, userId);
 
   const limit = Math.min(Math.max(Number(filters.limit) || 100, 1), 300);
@@ -202,12 +204,7 @@ export async function listActivityLogs({
   return data || [];
 }
 
-export async function listUserSessions({
-  admin,
-  merchantId,
-  userId,
-  filters = {}
-}) {
+export async function listUserSessions({ admin, merchantId, userId, filters = {} }) {
   await requireMerchantMember(admin, merchantId, userId);
   const limit = Math.min(Math.max(Number(filters.limit) || 100, 1), 300);
 
@@ -227,6 +224,33 @@ export async function listUserSessions({
   const { data, error } = await query;
   if (error) throw error;
   return data || [];
+}
+
+async function resolveAuthenticatedContext({ admin, userId, merchantId = null, storeId = null }) {
+  let resolvedMerchant = validUuid(merchantId);
+  let resolvedStore = validUuid(storeId);
+
+  if (resolvedStore) {
+    const { data: store, error } = await admin.from('stores')
+      .select('id,merchant_id').eq('id', resolvedStore).maybeSingle();
+    if (error) throw error;
+    if (!store) resolvedStore = null;
+    else {
+      if (resolvedMerchant && store.merchant_id !== resolvedMerchant) throw new Error('Forbidden: store is not part of merchant');
+      resolvedMerchant = store.merchant_id;
+    }
+  }
+
+  if (resolvedMerchant) {
+    await requireMerchantMember(admin, resolvedMerchant, userId);
+  } else {
+    const { data: membership, error } = await admin.from('merchant_members')
+      .select('merchant_id').eq('user_id', userId).order('created_at').limit(1).maybeSingle();
+    if (error) throw error;
+    resolvedMerchant = membership?.merchant_id || null;
+  }
+
+  return { merchantId:resolvedMerchant, storeId:resolvedStore };
 }
 
 function enforceClientRate(req, sessionKey) {
