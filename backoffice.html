@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#111827">
+<title>AnnyPay AI Backoffice</title>
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+.ai-box{min-height:420px;display:flex;flex-direction:column}.ai-log{flex:1;max-height:420px;overflow:auto;padding:12px 0}.ai-msg{padding:12px 14px;border-radius:14px;margin:8px 0;max-width:88%;white-space:pre-wrap}.ai-msg.user{margin-left:auto;background:#111827;color:#fff}.ai-msg.ai{background:#f3f4f6}.prompt-row{display:flex;gap:8px}.prompt-row textarea{flex:1;min-height:70px;resize:vertical}.status-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#9ca3af;margin-right:6px}.status-dot.ok{background:#10a37f}.module-links{display:flex;gap:8px;flex-wrap:wrap}.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}.small{font-size:12px}.wide{width:100%}.nav-scroll{overflow:auto}.split{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}@media(max-width:900px){.split{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<section id="loadingScreen"><div class="auth-panel" style="min-height:100vh"><div class="auth-card"><h2>AnnyPay Backoffice</h2><p id="loadingText" class="muted">กำลังตรวจ Session และ Database...</p></div></div></section>
+
+<section id="backoffice" class="hidden">
+<div class="app-shell">
+<aside id="boSidebar" class="sidebar nav-scroll">
+  <div class="brand"><div class="logo">A</div><div><strong>AnnyPay</strong><small>AI Backoffice</small></div></div>
+  <select id="boMerchantSelect" class="merchant-switch"></select>
+  <nav class="nav">
+    <div class="nav-title">AI</div>
+    <button class="active" data-bo-view="ai">✦ AI Home</button>
+    <button data-bo-view="dashboard">◉ Dashboard</button>
+    <div class="nav-title">COMMERCE</div>
+    <button data-bo-view="stores">▣ ร้านค้า</button>
+    <button data-bo-view="products">◇ สินค้า</button>
+    <button data-bo-view="content">✎ Content Studio</button>
+    <button data-bo-view="salepages">▤ SalePage</button>
+    <button data-bo-view="sales">↗ Online Sales</button>
+    <div class="nav-title">PAYMENT</div>
+    <button data-bo-view="payment">฿ Payment</button>
+    <button data-bo-view="webhooks">⇄ Webhook & Integrations</button>
+    <div class="nav-title">OPERATIONS</div>
+    <button data-bo-view="orders">≡ Orders</button>
+    <button data-bo-view="automations">⚡ Automations</button>
+    <button data-bo-view="audit">☷ AI Action Log</button>
+  </nav>
+  <div class="userbox"><div id="boUserEmail"></div><small id="boMerchantName"></small><div style="margin-top:10px"><a class="btn" href="index.html">Merchant Home</a></div></div>
+</aside>
+
+<main class="main">
+<header class="topbar"><div class="row"><button id="boMobileMenu" class="btn mobile">☰</button><strong id="boTitle">AI Home</strong></div><div class="top-actions"><span class="badge gray"><span id="dbDot" class="status-dot"></span>DB</span><span class="badge gray"><span id="aiDot" class="status-dot"></span>AI</span><span class="badge gray"><span id="paymentDot" class="status-dot"></span>Payment</span></div></header>
+<div class="content">
+<div id="boMessage" class="hidden"></div>
+
+<section id="bo-ai" class="view active">
+  <div class="pagehead"><div><h1>Anny AI Command Center</h1><p>Prompt → Skill → Intent → Service → Event → Webhook / Automation</p></div><span class="badge gray">SKILL v2.0.0</span></div>
+  <div class="split">
+    <div class="panel card ai-box">
+      <div class="module-links"><button class="btn quickPrompt" data-prompt="สร้างร้านใหม่ชื่อ Healthy Store">สร้างร้าน</button><button class="btn quickPrompt" data-prompt="สร้างคอนเทนต์ขายสินค้าสำหรับคนทำงาน">สร้าง Content</button><button class="btn quickPrompt" data-prompt="สร้าง SalePage จากสินค้าล่าสุด">สร้าง SalePage</button><button class="btn quickPrompt" data-prompt="สรุปยอดขายวันนี้">ยอดขายวันนี้</button></div>
+      <div id="aiLog" class="ai-log"><div class="ai-msg ai">Anny พร้อมรับคำสั่ง หลังบ้านจะส่ง Prompt ไปยัง AI Router ซึ่งโหลด SKILL.md ก่อน execute ทุก Action</div></div>
+      <div class="prompt-row"><textarea id="aiPrompt" placeholder="เช่น สร้างร้านขายกาแฟสุขภาพ แล้วเพิ่มสินค้าราคา 590 บาท..."></textarea><button id="aiSend" class="btn primary">ส่งให้ Anny</button></div>
+    </div>
+    <div class="panel card"><h3>System Readiness</h3><div class="item"><span>Database / RLS</span><b id="readyDb">-</b></div><div class="item"><span>AI Backend</span><b id="readyAi">-</b></div><div class="item"><span>Payment Provider</span><b id="readyPayment">-</b></div><div class="item"><span>Webhook OUT</span><b id="readyWebhook">-</b></div><p class="muted small">Payment จะไม่เปลี่ยนเป็น PAID จาก Browser หรือ Prompt ต้องผ่าน Provider/Webhook ที่ตรวจสอบแล้วเท่านั้น</p></div>
+  </div>
+</section>
+
+<section id="bo-dashboard" class="view"><div class="pagehead"><div><h1>Dashboard</h1><p>ข้อมูลจริงของ Merchant</p></div></div><div class="grid4"><div class="panel metric"><span>ยอดขาย PAID วันนี้</span><b id="boSales">฿0</b></div><div class="panel metric"><span>Orders วันนี้</span><b id="boOrders">0</b></div><div class="panel metric"><span>ร้าน</span><b id="boStores">0</b></div><div class="panel metric"><span>สินค้า</span><b id="boProducts">0</b></div></div></section>
+
+<section id="bo-stores" class="view"><div class="pagehead"><div><h1>Store Builder</h1><p>สร้างร้านด้วย Form หรือ Anny AI</p></div></div><form id="boStoreForm" class="panel card form-stack"><div class="grid2"><div class="field"><label>ชื่อร้าน</label><input id="boStoreName" required></div><div class="field"><label>รายละเอียด</label><input id="boStoreDescription"></div></div><button class="btn primary" type="submit">+ สร้างร้าน</button></form><div class="panel tablewrap" style="margin-top:14px"><table class="table"><thead><tr><th>ร้าน</th><th>Slug</th><th>Status</th><th>Domain</th></tr></thead><tbody id="boStoresBody"></tbody></table></div></section>
+
+<section id="bo-products" class="view"><div class="pagehead"><div><h1>Products</h1><p>สินค้า ราคา Stock และ Store mapping</p></div></div><form id="boProductForm" class="panel card form-stack"><div class="grid2"><div class="field"><label>ร้าน</label><select id="boProductStore"></select></div><div class="field"><label>ชื่อสินค้า</label><input id="boProductName" required></div><div class="field"><label>ราคา</label><input id="boProductPrice" type="number" min="0" required></div><div class="field"><label>Stock</label><input id="boProductStock" type="number" min="0" value="0"></div></div><button class="btn primary" type="submit">+ เพิ่มสินค้า</button></form><div class="panel tablewrap" style="margin-top:14px"><table class="table"><thead><tr><th>สินค้า</th><th>ร้าน</th><th>ราคา</th><th>Stock</th><th>Status</th></tr></thead><tbody id="boProductsBody"></tbody></table></div></section>
+
+<section id="bo-content" class="view"><div class="pagehead"><div><h1>Content Studio</h1><p>AI-generated content assets ที่เก็บไว้ใช้ซ้ำ</p></div><button id="contentGenerateBtn" class="btn primary">✦ สร้างด้วย AI</button></div><div class="panel tablewrap"><table class="table"><thead><tr><th>Type</th><th>Content</th><th>Status</th><th>Model</th><th>Created</th></tr></thead><tbody id="boContentBody"></tbody></table></div></section>
+
+<section id="bo-salepages" class="view"><div class="pagehead"><div><h1>SalePage</h1><p>สร้าง Preview Publish และส่ง URL ขาย</p></div><a class="btn primary" href="commerce-admin.html">เปิด SalePage Builder</a></div><div class="panel tablewrap"><table class="table"><thead><tr><th>Headline</th><th>Slug</th><th>Status</th><th>Public URL</th></tr></thead><tbody id="boSalePagesBody"></tbody></table></div></section>
+
+<section id="bo-sales" class="view"><div class="pagehead"><div><h1>Online Sales</h1><p>SalePage + Payment Link + Checkout</p></div><a class="btn primary" href="commerce-admin.html">Commerce Manager</a></div><div class="grid2"><div class="panel card"><h3>SalePage URLs</h3><p class="muted">ลูกค้าเข้า sale.html → Checkout → Order PENDING</p></div><div class="panel card"><h3>Payment Links</h3><p class="muted">ลูกค้าเข้า pay.html → Order PENDING → Payment Provider</p></div></div></section>
+
+<section id="bo-payment" class="view"><div class="pagehead"><div><h1>Payment</h1><p>Provider Account, Transaction และ Settlement</p></div></div><div class="grid2"><div class="panel card"><h3>Payment Accounts</h3><div id="boPaymentAccounts" class="muted">-</div></div><div class="panel card"><h3>Security Rule</h3><p class="muted">PAID = Verified Provider only</p></div></div><div class="panel tablewrap" style="margin-top:14px"><table class="table"><thead><tr><th>Provider</th><th>Transaction</th><th>Order</th><th>Amount</th><th>Status</th></tr></thead><tbody id="boPaymentsBody"></tbody></table></div></section>
+
+<section id="bo-webhooks" class="view"><div class="pagehead"><div><h1>Webhook & Integrations</h1><p>Webhook IN จาก Payment Provider และ Webhook OUT ไป CRM/ERP/Partner</p></div></div><div class="grid2"><div class="panel card"><h3>Webhook IN</h3><p class="muted">Provider → verify signature → normalize → payment/order → event</p><div id="boInboundCount" class="big">0</div></div><div class="panel card"><h3>Webhook OUT</h3><p class="muted">HMAC SHA-256 + retry + delivery log</p><button id="newWebhookBtn" class="btn primary">+ เพิ่ม Endpoint</button></div></div><div class="panel tablewrap" style="margin-top:14px"><table class="table"><thead><tr><th>Name</th><th>URL</th><th>Events</th><th>Status</th><th>Failures</th></tr></thead><tbody id="boWebhookBody"></tbody></table></div><div class="panel tablewrap" style="margin-top:14px"><table class="table"><thead><tr><th>Event</th><th>Endpoint</th><th>Attempt</th><th>Status</th><th>HTTP</th></tr></thead><tbody id="boDeliveryBody"></tbody></table></div></section>
+
+<section id="bo-orders" class="view"><div class="pagehead"><div><h1>Orders</h1><p>Order lifecycle และ Payment state</p></div></div><div class="panel tablewrap"><table class="table"><thead><tr><th>Order</th><th>Amount</th><th>Payment</th><th>Order Status</th><th>Created</th></tr></thead><tbody id="boOrdersBody"></tbody></table></div></section>
+
+<section id="bo-automations" class="view"><div class="pagehead"><div><h1>Automations</h1><p>Event → Condition → Action</p></div></div><form id="automationForm" class="panel card form-stack"><div class="grid2"><div class="field"><label>ชื่อ Rule</label><input id="autoName" required></div><div class="field"><label>Trigger Event</label><select id="autoEvent"><option>payment.paid</option><option>order.created</option><option>product.created</option><option>salepage.published</option><option>order.shipped</option></select></div></div><button class="btn primary" type="submit">+ สร้าง Automation</button></form><div class="panel tablewrap" style="margin-top:14px"><table class="table"><thead><tr><th>Rule</th><th>Trigger</th><th>Status</th><th>Actions</th></tr></thead><tbody id="boAutomationBody"></tbody></table></div></section>
+
+<section id="bo-audit" class="view"><div class="pagehead"><div><h1>AI Action Log</h1><p>ตรวจสอบทุก Action ที่ Anny ทำกับระบบ</p></div></div><div class="panel tablewrap"><table class="table"><thead><tr><th>Time</th><th>Intent</th><th>Prompt</th><th>Target</th><th>Status</th></tr></thead><tbody id="boAuditBody"></tbody></table></div></section>
+</div>
+</main>
+</div>
+</section>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/backoffice.js"></script>
+</body>
+</html>
