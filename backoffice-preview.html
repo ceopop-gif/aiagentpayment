@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AnnyPay AI Backoffice Preview</title>
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+body{background:#f7f7f8}.preview-note{font-size:12px;color:#6b7280}.ai-box{min-height:520px;display:flex;flex-direction:column}.messages{flex:1;padding:14px 0;display:flex;flex-direction:column;gap:10px}.msg{max-width:85%;padding:12px 14px;border-radius:15px;line-height:1.5}.msg.ai{background:#f3f4f6}.msg.user{margin-left:auto;background:#111827;color:#fff}.prompt-row{display:flex;gap:8px;align-items:end}.prompt-row textarea{flex:1;min-height:72px}.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#10a37f;margin-right:6px}.nav-scroll{overflow:auto}.module-card{min-height:135px}.small{font-size:12px}.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}@media(max-width:760px){.prompt-row{flex-direction:column}.prompt-row .btn{width:100%}}
+</style>
+</head>
+<body>
+<div class="app-shell">
+<aside id="side" class="sidebar nav-scroll">
+  <div class="brand"><div class="logo">A</div><div><strong>AnnyPay</strong><small>AI Backoffice Preview</small></div></div>
+  <select class="merchant-switch"><option>Healthy Coffee Co.</option><option>Premium Store</option></select>
+  <nav class="nav">
+    <div class="nav-title">AI</div>
+    <button class="active" data-view="ai">✦ AI Home</button>
+    <button data-view="dashboard">◉ Dashboard</button>
+    <div class="nav-title">COMMERCE</div>
+    <button data-view="stores">▣ ร้านค้า</button>
+    <button data-view="products">◇ สินค้า</button>
+    <button data-view="content">✎ Content Studio</button>
+    <button data-view="salepage">▤ SalePage</button>
+    <button data-view="sales">↗ Online Sales</button>
+    <div class="nav-title">PAYMENT</div>
+    <button data-view="payment">฿ Payment</button>
+    <button data-view="webhook">⇄ Webhook & Integrations</button>
+    <div class="nav-title">OPERATIONS</div>
+    <button data-view="orders">≡ Orders</button>
+    <button data-view="automation">⚡ Automations</button>
+    <button data-view="audit">☷ AI Action Log</button>
+  </nav>
+  <div class="userbox">merchant@annypay.demo<br><small>OWNER · KYC APPROVED</small></div>
+</aside>
+<main class="main">
+<header class="topbar">
+  <div class="row"><button class="btn mobile" onclick="document.getElementById('side').classList.toggle('open')">☰</button><strong id="title">AI Home</strong></div>
+  <div class="top-actions"><span class="badge gray"><span class="status-dot"></span>DB</span><span class="badge gray"><span class="status-dot"></span>AI</span><span class="badge gray"><span class="status-dot"></span>Webhook</span><span class="badge gray">Payment Sandbox</span></div>
+</header>
+<div class="content">
+<section id="ai" class="view active">
+  <div class="pagehead"><div><h1>Anny AI Command Center</h1><p>Prompt → Skill → Intent → Service → Event → Webhook / Automation</p></div><span class="badge gray">SKILL v2.0.0</span></div>
+  <div class="grid2">
+    <div class="panel card ai-box">
+      <div class="quick-grid">
+        <button class="btn quick" data-prompt="สร้างร้านขายกาแฟสุขภาพ ชื่อ Healthy Coffee">สร้างร้าน</button>
+        <button class="btn quick" data-prompt="เพิ่มสินค้า Healthy Coffee ราคา 590 บาท Stock 100">เพิ่มสินค้า</button>
+        <button class="btn quick" data-prompt="สร้างคอนเทนต์ขายสินค้านี้สำหรับคนทำงาน">สร้าง Content</button>
+        <button class="btn quick" data-prompt="สร้าง SalePage ให้สินค้าล่าสุด">สร้าง SalePage</button>
+      </div>
+      <div id="messages" class="messages"><div class="msg ai">Anny พร้อมแล้วครับ ทุกคำสั่งจะอ่าน Master SKILL.md และ Domain Skill ก่อนทำงาน</div></div>
+      <div class="prompt-row"><textarea id="prompt" placeholder="บอก Anny ว่าต้องการทำอะไร..."></textarea><button id="send" class="btn primary">ส่งให้ Anny</button></div>
+    </div>
+    <div class="panel card">
+      <h3>System Readiness</h3>
+      <div class="item"><span>Database / RLS</span><b>READY</b></div>
+      <div class="item"><span>AI Router</span><b>READY</b></div>
+      <div class="item"><span>Store / Product</span><b>READY</b></div>
+      <div class="item"><span>Content / SalePage</span><b>READY</b></div>
+      <div class="item"><span>Webhook IN / OUT</span><b>READY</b></div>
+      <div class="item"><span>Payment Provider</span><b>SANDBOX</b></div>
+      <p class="preview-note">Payment จะเปลี่ยนเป็น PAID เฉพาะเมื่อ Provider/Webhook ที่ตรวจสอบแล้วส่งผลกลับมาเท่านั้น</p>
+    </div>
+  </div>
+</section>
+<section id="dashboard" class="view"><div class="pagehead"><div><h1>Dashboard</h1><p>ภาพรวม Commerce + Payment</p></div></div><div class="grid4"><div class="panel metric"><span>ยอดขายวันนี้</span><b>฿18,950</b></div><div class="panel metric"><span>Orders</span><b>28</b></div><div class="panel metric"><span>Payment สำเร็จ</span><b>26</b></div><div class="panel metric"><span>ร้านทั้งหมด</span><b>3</b></div></div></section>
+<section id="stores" class="view"><div class="pagehead"><div><h1>Store Builder</h1><p>สร้างร้านด้วย Form หรือ Prompt</p></div><button class="btn primary">✦ สร้างด้วย AI</button></div><div class="panel tablewrap"><table class="table"><thead><tr><th>ร้าน</th><th>Slug</th><th>Status</th><th>Payment</th></tr></thead><tbody><tr><td>Healthy Coffee</td><td>healthy-coffee</td><td> PUBLISHED </td><td>SANDBOX</td></tr><tr><td>Premium Store</td><td>premium-store</td><td>DRAFT</td><td>-</td></tr></tbody></table></div></section>
+<section id="products" class="view"><div class="pagehead"><div><h1>Products</h1><p>สินค้า รูป ราคา Stock และ SEO</p></div><button class="btn primary">+ เพิ่มสินค้า</button></div><div class="panel tablewrap"><table class="table"><thead><tr><th>สินค้า</th><th>ร้าน</th><th>ราคา</th><th>Stock</th><th>Status</th></tr></thead><tbody><tr><td>Healthy Coffee</td><td>Healthy Coffee</td><td>฿590</td><td>128</td><td>ACTIVE</td></tr><tr><td>Premium Shirt</td><td>Premium Store</td><td>฿790</td><td>42</td><td>ACTIVE</td></tr></tbody></table></div></section>
+<section id="content" class="view"><div class="pagehead"><div><h1>Content Studio</h1><p>AI สร้าง Headline, Sale Copy, Social, Ads และ SEO</p></div><button class="btn primary">✦ Generate Content</button></div><div class="grid4"><div class="panel card module-card"><h3>Headline</h3><p class="muted">ข้อความเปิดการขายที่สัมพันธ์กับสินค้า</p></div><div class="panel card module-card"><h3>Sale Copy</h3><p class="muted">Problem → Solution → Benefits → CTA</p></div><div class="panel card module-card"><h3>Social Post</h3><p class="muted">Facebook / LINE OA / TikTok</p></div><div class="panel card module-card"><h3>Ads Copy</h3><p class="muted">Primary Text + Headline + Angle</p></div></div></section>
+<section id="salepage" class="view"><div class="pagehead"><div><h1>SalePage Builder</h1><p>Product + Content → SalePage → Checkout → Payment</p></div><button class="btn primary">+ สร้าง SalePage</button></div><div class="grid2"><div class="panel card"><h3>Healthy Coffee</h3><p class="muted">Hero → Problem → Solution → Benefits → Product → Payment → CTA</p><div class="item"><span>Status</span><b>PUBLISHED</b></div></div><div class="panel card"><h3>AI Content Mapping</h3><div class="item"><span>Headline</span><b>READY</b></div><div class="item"><span>Benefits</span><b>READY</b></div><div class="item"><span>FAQ</span><b>READY</b></div><div class="item"><span>CTA</span><b>READY</b></div></div></div></section>
+<section id="sales" class="view"><div class="pagehead"><div><h1>Online Sales</h1><p>SalePage, Payment Link และ Checkout</p></div></div><div class="grid4"><div class="panel card module-card"><h3>SalePage</h3><p class="muted">ลิงก์ขายสินค้า</p></div><div class="panel card module-card"><h3>Payment Link</h3><p class="muted">สร้างลิงก์รับเงินจาก Prompt</p></div><div class="panel card module-card"><h3>AI Sales Agent</h3><p class="muted">แนะนำสินค้า → ส่ง SalePage</p></div><div class="panel card module-card"><h3>Customer Status</h3><p class="muted">ติดตาม Order และ Payment</p></div></div></section>
+<section id="payment" class="view"><div class="pagehead"><div><h1>Payment</h1><p>Provider Adapter, Transaction และ Settlement</p></div><button class="btn primary">+ Connect Provider</button></div><div class="grid4"><div class="panel metric"><span>Gross Sales</span><b>฿22,900</b></div><div class="panel metric"><span>Fees</span><b>฿286</b></div><div class="panel metric"><span>Net</span><b>฿22,614</b></div><div class="panel metric"><span>Settlement</span><b>T+1</b></div></div></section>
+<section id="webhook" class="view"><div class="pagehead"><div><h1>Webhook & Integrations</h1><p>Webhook IN จาก Payment Provider และ Webhook OUT ไป CRM / ERP / Partner</p></div><button class="btn primary">+ เพิ่ม Endpoint</button></div><div class="grid2"><div class="panel card"><h3>Webhook IN</h3><div class="item"><span>payment.paid</span><b>VERIFIED</b></div><div class="item"><span>payment.failed</span><b>VERIFIED</b></div></div><div class="panel card"><h3>Webhook OUT</h3><div class="item"><span>CRM Endpoint</span><b>ACTIVE</b></div><div class="item"><span>ERP Endpoint</span><b>PAUSED</b></div></div></div></section>
+<section id="orders" class="view"><div class="pagehead"><div><h1>Orders</h1><p>Order lifecycle + Payment state</p></div></div><div class="panel tablewrap"><table class="table"><thead><tr><th>Order</th><th>Customer</th><th>Amount</th><th>Payment</th><th>Status</th></tr></thead><tbody><tr><td>#10028</td><td>Somchai A.</td><td>฿590</td><td>PAID</td><td>PROCESSING</td></tr><tr><td>#10029</td><td>Nok B.</td><td>฿790</td><td>PENDING</td><td>WAITING_PAYMENT</td></tr></tbody></table></div></section>
+<section id="automation" class="view"><div class="pagehead"><div><h1>Automations</h1><p>Event → Condition → Action</p></div><button class="btn primary">+ สร้าง Automation</button></div><div class="grid2"><div class="panel card"><h3>payment.paid → Notify</h3><div class="item"><span>Action</span><b>Webhook OUT + Notify</b></div></div><div class="panel card"><h3>product.created → Content</h3><div class="item"><span>Action</span><b>Generate Content</b></div></div></div></section>
+<section id="audit" class="view"><div class="pagehead"><div><h1>AI Action Log</h1><p>Audit ทุก Action ที่ Anny ทำกับระบบ</p></div></div><div class="panel tablewrap"><table class="table"><thead><tr><th>เวลา</th><th>Intent</th><th>Prompt</th><th>Target</th><th>Status</th></tr></thead><tbody><tr><td>17:10</td><td>CREATE_STORE</td><td>สร้างร้าน Healthy Coffee</td><td>store_001</td><td>SUCCESS</td></tr><tr><td>17:12</td><td>CREATE_CONTENT</td><td>สร้าง Content สำหรับคนทำงาน</td><td>content_114</td><td>SUCCESS</td></tr></tbody></table></div></section>
+</div>
+</main>
+</div>
+<script>
+const titles={ai:'AI Home',dashboard:'Dashboard',stores:'ร้านค้า',products:'สินค้า',content:'Content Studio',salepage:'SalePage',sales:'Online Sales',payment:'Payment',webhook:'Webhook & Integrations',orders:'Orders',automation:'Automations',audit:'AI Action Log'};
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>go(b.dataset.view));
+function go(v){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===v));document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===v));document.getElementById('title').textContent=titles[v]||'AnnyPay';document.getElementById('side').classList.remove('open');window.scrollTo(0,0)}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+document.querySelectorAll('.quick').forEach(b=>b.onclick=()=>{document.getElementById('prompt').value=b.dataset.prompt;document.getElementById('prompt').focus()});
+document.getElementById('send').onclick=()=>{const p=document.getElementById('prompt'),t=p.value.trim();if(!t)return;const m=document.getElementById('messages');m.insertAdjacentHTML('beforeend','<div class="msg user">'+esc(t)+'</div>');p.value='';let r='Anny อ่าน SKILL.md → ตรวจ Intent → ตรวจสิทธิ์ Merchant → เรียก Service → บันทึก Audit → ยิง Event/Webhook ตามกฎระบบ';if(/สร้างร้าน/.test(t))r='Intent CREATE_STORE → Store Skill → สร้างร้าน DRAFT → event store.created';else if(/สินค้า/.test(t))r='Intent CREATE_PRODUCT → Product Skill → บันทึกสินค้า ราคา และ Stock';else if(/คอนเทนต์|content/i.test(t))r='Intent CREATE_CONTENT → Content Skill → สร้าง Headline, Sale Copy, Social และ Ads';else if(/salepage|หน้าขาย/i.test(t))r='Intent CREATE_SALEPAGE → SalePage Skill → รวม Product + Content → Preview → Publish';m.insertAdjacentHTML('beforeend','<div class="msg ai">'+esc(r)+'</div>');m.scrollTop=m.scrollHeight};
+</script>
+</body>
+</html>
