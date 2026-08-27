@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AnnyPay SalePage</title>
+<link rel="stylesheet" href="assets/public.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><div class="logo">A</div><div>AnnyPay <span class="muted">Secure Commerce</span></div></div>
+  <div id="message" class="hidden"></div>
+  <main id="offer" class="hidden">
+    <section class="hero">
+      <span class="pill" id="storeName"></span>
+      <h1 id="headline"></h1>
+      <p id="description" class="muted"></p>
+      <div class="price"><span id="price"></span><span id="oldPrice" class="old hidden"></span></div>
+      <p class="muted">Checkout นี้จะสร้าง Order ใน AnnyPay จริง แต่จะยังไม่ถือว่าชำระสำเร็จจนกว่า Payment Provider จะยืนยัน</p>
+    </section>
+    <div class="grid">
+      <section class="card">
+        <h2>รายละเอียดสินค้า</h2>
+        <p id="productDescription" class="muted"></p>
+        <div class="summary"><div class="row"><span>สินค้า</span><b id="productName"></b></div><div class="row"><span>จำนวนคงเหลือ</span><span id="stock"></span></div></div>
+      </section>
+      <section class="card">
+        <h2>สั่งซื้อ</h2>
+        <form id="checkoutForm" class="form">
+          <div class="field"><label>ชื่อผู้สั่งซื้อ</label><input id="customerName" required></div>
+          <div class="field"><label>เบอร์โทร</label><input id="customerPhone" required></div>
+          <div class="field"><label>Email</label><input id="customerEmail" type="email"></div>
+          <div class="field"><label>จำนวน</label><input id="quantity" type="number" min="1" max="100" value="1" required></div>
+          <div class="field"><label>ที่อยู่จัดส่ง</label><textarea id="address" rows="3"></textarea></div>
+          <button id="checkoutBtn" class="btn primary" type="submit">สร้าง Order</button>
+        </form>
+        <div id="orderSuccess" class="success hidden"></div>
+      </section>
+    </div>
+  </main>
+</div>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/sale.js"></script>
+</body>
+</html>
