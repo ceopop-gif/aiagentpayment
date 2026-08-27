@@ -28,13 +28,14 @@ export async function loadDomainSkill(name) {
 }
 
 export async function buildSkillContext(domain) {
-  // Billing and frontend/backoffice synchronization are core policies.
-  // Every AI command must understand both before reasoning about domain actions.
-  const [master, billingSkill, syncSkill, domainSkill] = await Promise.all([
+  // Billing, frontend/backoffice synchronization and Payment Fact snapshots
+  // are core policies that apply to every AI command.
+  const [master, billingSkill, syncSkill, paymentFactSkill, domainSkill] = await Promise.all([
     loadMasterSkill(),
     loadDomainSkill('billing'),
     loadDomainSkill('frontend-backoffice-sync'),
-    domain && !['billing','frontend-backoffice-sync'].includes(domain)
+    loadDomainSkill('payment-fact'),
+    domain && !['billing','frontend-backoffice-sync','payment-fact'].includes(domain)
       ? loadDomainSkill(domain)
       : Promise.resolve('')
   ]);
@@ -44,6 +45,7 @@ export async function buildSkillContext(domain) {
     master,
     billingSkill ? `\n# CORE BILLING & AI TOKEN POLICY\n${billingSkill}` : '',
     syncSkill ? `\n# CORE FRONTEND ↔ BACKOFFICE SYNC POLICY\n${syncSkill}` : '',
+    paymentFactSkill ? `\n# CORE PAYMENT FACT / QR SNAPSHOT POLICY\n${paymentFactSkill}` : '',
     domainSkill ? `\n# DOMAIN SKILL: ${domain}\n${domainSkill}` : ''
   ].join('\n');
 }
