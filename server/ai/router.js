@@ -9,10 +9,12 @@ import { getOrder, salesReport } from '../services/order-service.js';
 import {
   requireAiEntitlement, consumeAiUsage, getStoreBilling, createTokenPurchaseOrder
 } from '../services/billing-service.js';
+import { listPayoutAccounts, requestWithdrawal, listWithdrawals } from '../services/payout-service.js';
 
 const HIGH_RISK = new Set([
   'REFUND_PAYMENT','CANCEL_PAYMENT','CHANGE_SETTLEMENT_ACCOUNT',
-  'DELETE_STORE','DELETE_MERCHANT','CHANGE_PAYMENT_CREDENTIALS','DISABLE_WEBHOOK_SECURITY'
+  'DELETE_STORE','DELETE_MERCHANT','CHANGE_PAYMENT_CREDENTIALS','DISABLE_WEBHOOK_SECURITY',
+  'REQUEST_WITHDRAWAL','SET_DEFAULT_PAYOUT_ACCOUNT','REMOVE_PAYOUT_ACCOUNT'
 ]);
 
 const DOMAIN_BY_INTENT = {
@@ -23,10 +25,9 @@ const DOMAIN_BY_INTENT = {
   CREATE_PAYMENT_LINK:'payment', CONNECT_PAYMENT:'payment', CHECK_PAYMENT:'payment', CREATE_PAYMENT_INTENT:'payment',
   CREATE_WEBHOOK_ENDPOINT:'webhook', TEST_WEBHOOK:'webhook',
   CHECK_ORDER:'order', SALES_REPORT:'analytics', CREATE_AUTOMATION:'automation',
-  CHECK_SUBSCRIPTION:'billing', CHECK_AI_TOKENS:'billing', BUY_AI_TOKENS:'billing'
+  CHECK_SUBSCRIPTION:'billing', CHECK_AI_TOKENS:'billing', BUY_AI_TOKENS:'billing',
+  LIST_PAYOUT_ACCOUNTS:'payout', CHECK_WITHDRAWAL:'payout', REQUEST_WITHDRAWAL:'payout'
 };
-
-const NON_GENERATIVE_BILLING_INTENTS = new Set(['CHECK_SUBSCRIPTION','CHECK_AI_TOKENS','BUY_AI_TOKENS']);
 
 export async function executeAiCommand({
   admin,
@@ -47,8 +48,6 @@ export async function executeAiCommand({
   let routingBilling = null;
 
   if (aiProvider?.classifyIntent) {
-    // AI routing itself consumes provider tokens. A store with an ACTIVE/TRIAL
-    // subscription and available tokens is therefore required before calling it.
     const skill = await buildSkillContext();
     const estimatedRoutingMinimum = Math.max(1, Math.ceil((skill.length + prompt.length) / 4));
     routingBilling = await requireAiEntitlement({
@@ -81,7 +80,6 @@ export async function executeAiCommand({
     });
     routingBilling.remainingAfterRouting = routingCharge.balance;
   } else {
-    // Development fallback does not call an AI model, therefore no token is charged.
     classification = fallbackIntent(prompt);
   }
 
@@ -93,9 +91,13 @@ export async function executeAiCommand({
   if (HIGH_RISK.has(intent) && !confirmationToken) {
     return auditAndReturn(admin, {
       merchantId, userId, prompt, intent, domain,
-      target: parameters.id || null,
+      target: parameters.id || parameters.payoutAccountId || null,
       status: 'REQUIRES_CONFIRMATION',
-      result: { message: 'This action requires explicit confirmation.', billing: routingBilling?.remainingAfterRouting || null }
+      result: {
+        message: 'This action requires explicit confirmation.',
+        next_action: intent === 'REQUEST_WITHDRAWAL' ? 'CONFIRM_WITHDRAWAL' : 'CONFIRM_HIGH_RISK_ACTION',
+        billing: routingBilling?.remainingAfterRouting || null
+      }
     });
   }
 
@@ -116,15 +118,15 @@ export async function executeAiCommand({
 
     return auditAndReturn(admin, {
       merchantId, userId, prompt, intent, domain,
-      target: result?.id || result?.transaction?.id || parameters.id || null,
+      target: result?.id || result?.transaction?.id || parameters.id || parameters.payoutAccountId || null,
       status: 'SUCCESS',
       result: { ...result, ai_token_balance: routingBilling?.remainingAfterRouting || undefined }
     });
   } catch (error) {
-    const friendly = billingError(error);
+    const friendly = billingError(error) || payoutError(error);
     await auditAndReturn(admin, {
       merchantId, userId, prompt, intent, domain,
-      target: parameters.id || null,
+      target: parameters.id || parameters.payoutAccountId || null,
       status: 'FAILED', result: { error: error.message, code: error.code || null, ...friendly }
     });
     throw Object.assign(error, friendly ? { userMessage: friendly.message, nextAction: friendly.next_action } : {});
@@ -169,6 +171,26 @@ async function dispatchIntent(ctx) {
         billingProvider:ctx.parameters.provider || null
       });
     }
+    case 'LIST_PAYOUT_ACCOUNTS': {
+      const storeId = ctx.parameters.storeId || ctx.billingStoreId;
+      if (!storeId) throw new Error('storeId is required');
+      return { accounts: await listPayoutAccounts({ admin:ctx.admin, merchantId:ctx.merchantId, userId:ctx.userId, storeId }), max_accounts: 5 };
+    }
+    case 'CHECK_WITHDRAWAL': {
+      const storeId = ctx.parameters.storeId || ctx.billingStoreId;
+      if (!storeId) throw new Error('storeId is required');
+      return { withdrawals: await listWithdrawals({ admin:ctx.admin, merchantId:ctx.merchantId, userId:ctx.userId, storeId, limit:ctx.parameters.limit || 20 }) };
+    }
+    case 'REQUEST_WITHDRAWAL': {
+      const storeId = ctx.parameters.storeId || ctx.billingStoreId;
+      if (!storeId || !ctx.parameters.payoutAccountId || !ctx.parameters.amount) throw new Error('storeId, payoutAccountId and amount are required');
+      return requestWithdrawal({
+        admin:ctx.admin, merchantId:ctx.merchantId, userId:ctx.userId,
+        storeId, payoutAccountId:ctx.parameters.payoutAccountId,
+        amount:Number(ctx.parameters.amount), fee:Number(ctx.parameters.fee || 0),
+        currency:ctx.parameters.currency || 'THB', metadata:{ source:'AI_CONFIRMED' }
+      });
+    }
     default: throw new Error(`Intent ${ctx.intent} is registered but its service handler is not implemented yet`);
   }
 }
@@ -181,7 +203,12 @@ async function auditAndReturn(admin, { merchantId, userId, prompt, intent, domai
     intent,
     tool: `anny.${domain}`,
     target: target ? String(target) : null,
-    result: { ...result, skill_version: '2.0.0', billing_policy: 'store-subscription-ai-token-v1' },
+    result: {
+      ...result,
+      skill_version: '2.0.0',
+      billing_policy: 'store-subscription-ai-token-v1',
+      payout_policy: 'max-5-verified-accounts-per-store-v1'
+    },
     status
   });
   if (error) console.error('AI audit write failed', error);
@@ -205,8 +232,28 @@ function billingError(error) {
   return null;
 }
 
+function payoutError(error) {
+  const code = error?.code || error?.message || '';
+  if (/STORE_PAYOUT_ACCOUNT_LIMIT_REACHED/.test(code)) return {
+    message: 'ร้านนี้ลงทะเบียนบัญชีรับเงินครบ 5 บัญชีแล้ว',
+    next_action: 'OPEN_PAYOUT_ACCOUNTS'
+  };
+  if (/PAYOUT_ACCOUNT_NOT_VERIFIED_ACTIVE/.test(code)) return {
+    message: 'บัญชีนี้ยังไม่ผ่านการยืนยันหรือยังไม่ ACTIVE จึงไม่สามารถถอนเงินเข้าได้',
+    next_action: 'SELECT_VERIFIED_PAYOUT_ACCOUNT'
+  };
+  if (/PAYOUT_ACCOUNT_STORE_MISMATCH/.test(code)) return {
+    message: 'บัญชีรับเงินที่เลือกไม่ได้เป็นบัญชีของร้านนี้',
+    next_action: 'SELECT_STORE_PAYOUT_ACCOUNT'
+  };
+  return null;
+}
+
 function fallbackIntent(prompt) {
   const p = prompt.toLowerCase();
+  if (/บัญชี.*ถอน|บัญชีรับเงิน|payout account/.test(p) && /แสดง|ดู|เช็ก|รายการ/.test(p)) return { intent:'LIST_PAYOUT_ACCOUNTS', parameters:{}, missing:['storeId'] };
+  if (/ถอนเงิน|withdraw/.test(p) && /สถานะ|ล่าสุด|ประวัติ|เช็ก|ดู/.test(p)) return { intent:'CHECK_WITHDRAWAL', parameters:{}, missing:['storeId'] };
+  if (/ถอนเงิน|withdraw/.test(p)) return { intent:'REQUEST_WITHDRAWAL', parameters:{}, missing:['storeId','payoutAccountId','amount'] };
   if (/token|โทเคน|เครดิต ai/.test(p) && /ซื้อ|เพิ่ม|เติม/.test(p)) return { intent:'BUY_AI_TOKENS', parameters:{}, missing:['storeId','packId'] };
   if (/token|โทเคน|เครดิต ai/.test(p) && /เหลือ|เช็ก|ตรวจ|balance/.test(p)) return { intent:'CHECK_AI_TOKENS', parameters:{}, missing:['storeId'] };
   if (/สมาชิก|subscription|แพ็กเกจ/.test(p) && /เช็ก|สถานะ|เหลือ|ปัจจุบัน/.test(p)) return { intent:'CHECK_SUBSCRIPTION', parameters:{}, missing:['storeId'] };
