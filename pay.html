@@ -1,0 +1,6 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AnnyPay Payment Link</title><link rel="stylesheet" href="assets/public.css"></head>
+<body><div class="wrap"><div class="brand"><div class="logo">A</div><div>AnnyPay <span class="muted">Payment Link</span></div></div><div id="message" class="hidden"></div>
+<main id="paymentBox" class="card hidden" style="max-width:620px;margin:auto"><div class="center"><span class="pill">Secure Payment Request</span><h1 id="description" style="font-size:36px;margin-top:14px"></h1><div class="price" id="amount"></div><p class="muted">ระบบจะสร้าง Order PENDING ก่อน และจะถือว่าชำระสำเร็จเมื่อ Payment Provider ยืนยันผ่าน Webhook เท่านั้น</p></div>
+<form id="payForm" class="form"><div class="field"><label>ชื่อ</label><input id="name" required></div><div class="field"><label>เบอร์โทร</label><input id="phone" required></div><div class="field"><label>Email</label><input id="email" type="email"></div><button id="payBtn" class="btn primary">ดำเนินการต่อ</button></form><div id="success" class="success hidden"></div></main></div>
+<script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="assets/pay.js"></script></body></html>
