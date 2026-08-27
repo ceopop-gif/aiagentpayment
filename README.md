@@ -2,148 +2,126 @@
 
 **AI Operating System for Commerce & Payment**
 
-**Core Flow:** Prompt → Store → Product → Content → SalePage → Checkout → Payment → Order → Settlement → Automation
-
-## System status
-
-This repository now contains the Merchant UI, full AI Backoffice shell, Supabase/PostgreSQL schema, Commerce checkout flow, AI Skill/Router architecture, Payment Provider adapter contract, Webhook IN/OUT engine, Event Bus, Automation runner and Node backend runtime.
-
-A real Supabase project, AI Gateway and concrete Payment Provider adapter still need to be configured before production use.
+**Flow:** Prompt → Store → Product → Content → SalePage → Checkout → Payment → Store Balance → Withdrawal → Settlement / Automation
 
 ## Main pages
 
-- `index.html` — Login / Merchant onboarding / basic Merchant Dashboard
+- `index.html` — Merchant Login / Onboarding
 - `backoffice.html` — Full AI Backoffice
-- `commerce-admin.html` — SalePage + Payment Link builder
-- `sale.html` — Public SalePage / checkout
-- `pay.html` — Public Payment Link page
+- `billing.html` — Membership + AI Token Wallet
+- `payouts.html` — Store Balance + Payout Accounts + Withdrawals
+- `commerce-admin.html` — SalePage + Payment Link Builder
+- `store.html` — Public Storefront
+- `sale.html` — Public SalePage / Checkout
+- `pay.html` — Public Payment Link
 
-## Backoffice modules
+## One database / Store isolation
 
-```text
-AI Home
-Dashboard
-Store Builder
-Products
-Content Studio
-SalePage
-Online Sales
-Payment
-Webhook & Integrations
-Orders
-Automations
-AI Action Log
-```
+All frontoffice and backoffice modules use the same PostgreSQL/Supabase database. Each store has its own `store_id`; payment, balance, membership, AI token wallet, payout accounts and withdrawals are linked to that Store.
 
-## AI architecture
+## Payment Fact
 
-`SKILL.md` is the authoritative Master Skill (v2.0.0).
+Each QR/payment creates one self-describing `payment_transactions` row with immutable store/order/product/amount/conditions snapshot. Webhook processing can identify the commercial context from that row without joining Store/Product again.
 
-Runtime flow:
+## Store money system
+
+Each store has one current `store_balances` row:
 
 ```text
-Prompt
-→ load SKILL.md + domain skill
-→ Intent classification
-→ Merchant/Role permission check
-→ Risk check
-→ Domain Service
-→ Database
-→ AI Audit
-→ Event Bus
-→ Webhook OUT / Automation
+pending_balance
+available_balance
+reserved_balance
+total_paid_in
+total_fees
+total_paid_out
 ```
 
-Domain skills are under `skills/`.
+Every movement is written to immutable `store_balance_ledger`.
 
-## Backend architecture
+```text
+Verified payment.paid
+→ Pending Balance
+→ Hold
+→ Available Balance
+→ Withdrawal Reserve
+→ Payout Provider
+→ Verified payout.paid
+→ Paid Out
+```
+
+Provider failure releases Reserved back to Available idempotently.
+
+## Payout accounts
+
+- Maximum 5 registered payout accounts per Store.
+- Full account number is encrypted in server Secret Store.
+- Browser sees only masked/last-4 data.
+- New account = `PENDING_VERIFICATION`.
+- Withdrawal is allowed only to `ACTIVE + verified` account.
+- Withdrawal destination/amount snapshot cannot be changed after request creation.
+
+## Membership + AI Tokens
+
+Each Store has a monthly subscription and AI token wallet. AI checks active subscription and remaining token balance before generative usage. Purchased token packs are granted only after verified billing payment.
+
+## AI
+
+`SKILL.md` is the Master System Skill. Core Billing, Frontend↔Backoffice Sync and Payout rules are loaded with domain skills before AI execution.
+
+## Backend
 
 ```text
 server/
-├── ai/             Skill loader, provider-neutral AI gateway, router
-├── services/       Store, Product, Content, SalePage, Payment, Order, Webhook, Automation
-├── payment/        Provider registry + adapter contract
-├── webhooks/       Verified inbound + signed outbound delivery
-├── events/         Internal event bus
-├── automation/     Event automation runner
-├── secrets/        AES-256-GCM encrypted integration secret store
-├── lib/            Trusted Supabase client / authorization
-└── server.js       Node HTTP runtime + static web server
+├── ai/
+├── services/
+├── payment/
+├── payout/
+├── webhooks/
+├── events/
+├── automation/
+├── secrets/
+├── lib/
+└── server.js
 ```
 
-## APIs
+## Core APIs
 
 ```text
 GET  /api/health
 POST /api/ai/command
-POST /api/webhooks/out
+
+GET  /api/payout/balance
+GET  /api/payout/accounts
+POST /api/payout/accounts
+POST /api/payout/accounts/verify
+POST /api/payout/accounts/default
+GET  /api/withdrawals
+POST /api/withdrawals
+POST /api/withdrawals/submit
+POST /api/webhooks/payout/:provider
+
 POST /api/webhooks/in/:provider
+POST /api/webhooks/out
 ```
 
 ## Database install
 
-Run SQL files using the order in `database/INSTALL.md`.
+Run SQL exactly in the order in `database/INSTALL.md`. Latest sequence includes Commerce, Billing, Payment Fact, Payout Accounts, Store Balance Ledger and atomic Balance functions.
 
-Current install sequence:
-
-```text
-schema.sql
-policies.sql
-onboarding.sql
-commerce.sql
-checkout-hardening.sql
-backoffice.sql
-secrets.sql
-```
-
-## Start locally / on a Node host
+## Start
 
 ```bash
 npm install
 npm start
 ```
 
-Default: `http://localhost:3000`
+Use `.env.example` for environment names. Real secrets must be stored in the hosting platform secret environment, never in GitHub or client code.
 
-Copy environment placeholders from `.env.example` into the hosting platform's secret environment variables.
+## Authority rule
 
-## Payment security rule
+Browser and AI are never authoritative for final money status. `PAID` payment/withdrawal states require verified provider/bank response or trusted reconciliation.
 
-**Browser and AI are never payment authority.**
-
-```text
-Customer
-→ Payment Provider
-→ Webhook IN
-→ Verify signature
-→ Validate transaction / amount / currency
-→ Transaction PAID
-→ Order PAID
-→ Internal Event
-→ Webhook OUT / Automation
-```
-
-No payment provider is enabled by default. A concrete adapter must be implemented and registered before AnnyPay claims that provider/channel is available.
-
-## Webhook OUT
-
-Outbound events are HTTPS-only in production, HMAC SHA-256 signed, protected from local/private SSRF destinations, logged, retried and moved to dead-letter state after retry exhaustion.
-
-Signing secrets are encrypted server-side and are never stored in `config.js` or Browser storage.
-
-## Production requirements still to complete
-
-- Create/configure Supabase project
-- Configure Auth redirect URLs
-- Configure AI Gateway/provider implementation
-- Implement/register real Payment Provider Adapter
-- Production webhook queue/worker
-- Bot protection + rate limiting
-- Checkout idempotency + inventory reservation
-- Fraud/risk rules
-- Observability/alerts
-- Backup/retention policies
-- KYC/Provider production approval process
+No real Payment/Payout Provider is enabled by default. Configure a concrete adapter and production credentials before processing real money.
 
 ## Repository
 
