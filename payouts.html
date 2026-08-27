@@ -1,53 +1,28 @@
 <!doctype html>
-<html lang="th">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AnnyPay Payout Accounts & Withdrawals</title>
-<link rel="stylesheet" href="assets/styles.css">
-<style>
-.limitbar{height:8px;background:#eef0f2;border-radius:999px;overflow:hidden}.limitbar>span{display:block;height:100%;background:#10a37f}.account-card{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:15px;border:1px solid #e5e7eb;border-radius:14px;margin-top:10px}.account-number{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.secure-note{font-size:12px;color:#6b7280;line-height:1.5}.actions{display:flex;gap:8px;flex-wrap:wrap}@media(max-width:700px){.account-card{align-items:flex-start;flex-direction:column}}
-</style>
-</head>
-<body>
-<div class="content" style="max-width:1100px;margin:auto">
-  <div class="pagehead"><div><h1>บัญชีรับเงิน & ถอนเงิน</h1><p>แต่ละร้านลงทะเบียนได้สูงสุด 5 บัญชี และถอนเข้าได้เฉพาะบัญชีที่ยืนยันแล้ว</p></div><a class="btn" href="backoffice.html">← Backoffice</a></div>
-  <div id="message" class="hidden"></div>
-  <div class="grid2">
-    <section class="panel card">
-      <h3>ร้านค้า</h3>
-      <div class="field"><label>เลือก Store</label><select id="storeSelect"></select></div>
-      <div style="margin-top:14px"><div class="item"><span>จำนวนบัญชีที่ลงทะเบียน</span><b id="accountCount">0 / 5</b></div><div class="limitbar"><span id="limitFill" style="width:0%"></span></div></div>
-      <p class="secure-note">เลขบัญชีเต็มจะส่งตรงไป Trusted Backend เพื่อเข้ารหัสใน Secret Store และจะไม่ถูกบันทึกไว้ใน Browser หรือแสดงกลับมาอีก</p>
-    </section>
-    <section class="panel card">
-      <h3>เพิ่มบัญชีรับเงิน</h3>
-      <form id="accountForm" class="form-stack">
-        <div class="grid2"><div class="field"><label>รหัสธนาคาร</label><input id="bankCode" required></div><div class="field"><label>ชื่อธนาคาร</label><input id="bankName" required></div><div class="field"><label>ชื่อบัญชี</label><input id="accountName" required></div><div class="field"><label>เลขบัญชี</label><input id="accountNumber" inputmode="numeric" autocomplete="off" required></div></div>
-        <button class="btn primary" type="submit">+ ลงทะเบียนบัญชี</button>
-      </form>
-    </section>
-  </div>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AnnyPay Balance & Withdrawals</title><link rel="stylesheet" href="assets/styles.css"><style>.limitbar{height:8px;background:#eef0f2;border-radius:999px;overflow:hidden}.limitbar>span{display:block;height:100%;background:#10a37f}.account-card{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:15px;border:1px solid #e5e7eb;border-radius:14px;margin-top:10px}.account-number{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.secure-note{font-size:12px;color:#6b7280;line-height:1.5}.actions{display:flex;gap:8px;flex-wrap:wrap}.balance-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.balance-card{padding:16px}.balance-card span{font-size:12px;color:#6b7280}.balance-card b{display:block;font-size:25px;margin-top:6px}@media(max-width:800px){.balance-grid{grid-template-columns:1fr 1fr}.account-card{align-items:flex-start;flex-direction:column}}@media(max-width:520px){.balance-grid{grid-template-columns:1fr}}</style></head>
+<body><div class="content" style="max-width:1180px;margin:auto">
+<div class="pagehead"><div><h1>ยอดเงิน & ถอนเงิน</h1><p>แต่ละ Store มี Balance และบัญชีรับเงินของตัวเองสูงสุด 5 บัญชี</p></div><a class="btn" href="backoffice.html">← Backoffice</a></div><div id="message" class="hidden"></div>
 
-  <section class="panel card" style="margin-top:14px"><div class="pagehead"><div><h2 style="margin:0">บัญชีที่ลงทะเบียน</h2><p>ถอนเงินได้เฉพาะบัญชีสถานะ ACTIVE</p></div></div><div id="accounts"></div></section>
+<section class="panel card"><div class="grid2"><div class="field"><label>เลือก Store</label><select id="storeSelect"></select></div><div class="field"><label>Payout Provider</label><select id="providerSelect"><option value="">ยังไม่ได้เชื่อม Provider</option></select></div></div></section>
 
-  <div class="grid2" style="margin-top:14px">
-    <section class="panel card">
-      <h3>สร้างคำขอถอนเงิน</h3>
-      <form id="withdrawForm" class="form-stack">
-        <div class="field"><label>บัญชีรับเงินที่ยืนยันแล้ว</label><select id="withdrawAccount"></select></div>
-        <div class="grid2"><div class="field"><label>จำนวนเงิน</label><input id="amount" type="number" min="0.01" step="0.01" required></div><div class="field"><label>ค่าธรรมเนียม</label><input id="fee" type="number" min="0" step="0.01" value="0"></div></div>
-        <label class="secure-note"><input id="confirmWithdraw" type="checkbox"> ฉันยืนยันจำนวนเงินและบัญชีปลายทางที่เลือก</label>
-        <button class="btn primary" type="submit">ขอถอนเงิน</button>
-      </form>
-      <p class="secure-note">คำขอจะเริ่มที่ REQUESTED ไม่ใช่ PAID และต้องผ่านการตรวจสอบ/Provider confirmation ก่อนถือว่าถอนสำเร็จ</p>
-    </section>
-    <section class="panel card"><h3>กฎความปลอดภัย</h3><div class="item"><span>บัญชีสูงสุด</span><b>5 / Store</b></div><div class="item"><span>บัญชีที่ถอนเข้าได้</span><b>ACTIVE + VERIFIED</b></div><div class="item"><span>เปลี่ยนปลายทางหลังส่งคำขอ</span><b>ไม่ได้</b></div><div class="item"><span>Browser ตั้ง PAID</span><b>ไม่ได้</b></div></section>
-  </div>
-
-  <section class="panel tablewrap" style="margin-top:14px"><table class="table"><thead><tr><th>Withdrawal</th><th>บัญชี</th><th>ยอด</th><th>Fee</th><th>Net</th><th>Status</th><th>เวลา</th></tr></thead><tbody id="withdrawalsBody"></tbody></table></section>
+<div class="balance-grid" style="margin-top:14px">
+  <div class="panel balance-card"><span>รอปลด Hold</span><b id="pendingBalance">฿0</b></div>
+  <div class="panel balance-card"><span>ถอนได้</span><b id="availableBalance">฿0</b></div>
+  <div class="panel balance-card"><span>จองสำหรับถอน</span><b id="reservedBalance">฿0</b></div>
+  <div class="panel balance-card"><span>ถอนสำเร็จสะสม</span><b id="paidOutTotal">฿0</b></div>
 </div>
-<script src="config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/payouts.js"></script>
-</body>
-</html>
+<section class="panel card" style="margin-top:14px"><div class="grid2"><div class="item"><span>Hold Policy</span><b id="holdPolicy">-</b></div><div class="item"><span>ยอดถอนขั้นต่ำ</span><b id="minWithdrawal">-</b></div></div><p class="secure-note">Payment ที่ Provider ยืนยัน PAID จะเข้ายอดรอ Hold ก่อน เมื่อครบกำหนดจึงย้ายเป็นยอดถอนได้โดยอัตโนมัติเมื่อมีการอ่าน Balance/ทำรายการ</p></section>
+
+<div class="grid2" style="margin-top:14px">
+<section class="panel card"><h3>บัญชีรับเงิน</h3><div class="item"><span>จำนวนบัญชี</span><b id="accountCount">0 / 5</b></div><div class="limitbar"><span id="limitFill" style="width:0%"></span></div><div id="accounts"></div><p class="secure-note">เลขบัญชีเต็มเข้ารหัสใน Secret Store หลังบ้านจะแสดงเฉพาะเลขท้าย 4 หลัก</p></section>
+<section class="panel card"><h3>เพิ่มบัญชีรับเงิน</h3><form id="accountForm" class="form-stack"><div class="grid2"><div class="field"><label>รหัสธนาคาร</label><input id="bankCode" required></div><div class="field"><label>ชื่อธนาคาร</label><input id="bankName" required></div><div class="field"><label>ชื่อบัญชี</label><input id="accountName" required></div><div class="field"><label>เลขบัญชี</label><input id="accountNumber" inputmode="numeric" autocomplete="off" required></div></div><button class="btn primary" type="submit">+ ลงทะเบียนบัญชี</button></form></section>
+</div>
+
+<div class="grid2" style="margin-top:14px">
+<section class="panel card"><h3>สร้างคำขอถอนเงิน</h3><form id="withdrawForm" class="form-stack"><div class="field"><label>บัญชี ACTIVE ที่ยืนยันแล้ว</label><select id="withdrawAccount"></select></div><div class="grid2"><div class="field"><label>จำนวนเงิน</label><input id="amount" type="number" min="0.01" step="0.01" required></div><div class="field"><label>ค่าธรรมเนียม</label><input id="fee" type="number" min="0" step="0.01" value="0"></div></div><label class="secure-note"><input id="confirmWithdraw" type="checkbox"> ฉันยืนยันยอดและบัญชีปลายทาง</label><button class="btn primary" type="submit">จองยอดเพื่อถอน</button></form><p class="secure-note">ระบบจะหักจาก Available ไป Reserved ก่อน หากยอดไม่พอจะไม่สร้างการถอน</p></section>
+<section class="panel card"><h3>กฎความปลอดภัย</h3><div class="item"><span>บัญชีสูงสุด</span><b>5 / Store</b></div><div class="item"><span>บัญชีปลายทาง</span><b>ACTIVE + VERIFIED</b></div><div class="item"><span>ยอดหลังขอถอน</span><b>แก้ย้อนหลังไม่ได้</b></div><div class="item"><span>ถอนสำเร็จ</span><b>Provider Confirm เท่านั้น</b></div></section>
+</div>
+
+<section class="panel tablewrap" style="margin-top:14px"><table class="table"><thead><tr><th>Withdrawal</th><th>บัญชี</th><th>ยอด</th><th>Net</th><th>Risk</th><th>Status</th><th>Provider</th><th>Action</th></tr></thead><tbody id="withdrawalsBody"></tbody></table></section>
+<section class="panel tablewrap" style="margin-top:14px"><div class="card"><h3 style="margin:0">Balance Ledger ล่าสุด</h3></div><table class="table"><thead><tr><th>เวลา</th><th>Type</th><th>Amount</th><th>Pending</th><th>Available</th><th>Reserved</th><th>Ref</th></tr></thead><tbody id="ledgerBody"></tbody></table></section>
+</div><script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="assets/payouts.js"></script></body></html>
