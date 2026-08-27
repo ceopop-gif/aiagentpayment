@@ -1,6 +1,6 @@
 # AnnyPay Database + Backoffice — Install Order
 
-Run these files in Supabase SQL Editor in this exact order:
+Run in Supabase SQL Editor in this exact order:
 
 1. `schema.sql`
 2. `policies.sql`
@@ -13,12 +13,10 @@ Run these files in Supabase SQL Editor in this exact order:
 9. `frontend-bridge.sql`
 10. `payment-fact.sql`
 11. `payouts.sql`
+12. `store-balance-ledger.sql`
+13. `store-balance-functions.sql`
 
-Then put only the **public** Supabase Project URL and **public anon key** into root `config.js`.
-
-## Server environment
-
-Set these as secret environment variables on the trusted Node backend host:
+## Server secrets
 
 ```text
 SUPABASE_URL
@@ -27,271 +25,159 @@ ANNYPAY_MASTER_KEY
 AI_GATEWAY_URL
 AI_GATEWAY_API_KEY
 AI_MODEL
-AI_DEFAULT_MAX_OUTPUT_TOKENS
 BILLING_PROVIDER
-PAYMENT_* variables required by the connected Provider Adapter
+PAYMENT_* provider variables
 ```
 
-`ANNYPAY_MASTER_KEY` must be a base64 encoded 32-byte random key. It encrypts integration, webhook and payout-account secrets stored server-side in `integration_secrets`.
-
-Never put these values in browser code or GitHub:
-
-- Supabase service role key
-- ANNYPAY_MASTER_KEY
-- AI Gateway API key
-- Payment provider secret/API key
-- Webhook signing secret
-- Full payout bank account number
-- Private key
-- Database password
-
-## Start backend
+For the optional normalized HMAC payout adapter:
 
 ```text
-npm install
-npm start
+PAYOUT_ADAPTER_TYPE=hmac-http
+PAYOUT_PROVIDER=<provider-name>
+PAYOUT_API_BASE_URL=https://...
+PAYOUT_API_KEY=...
+PAYOUT_WEBHOOK_SECRET=...
+PAYOUT_VERIFY_ACCOUNT_PATH=/beneficiaries/verify
+PAYOUT_CREATE_PATH=/payouts
+PAYOUT_STATUS_PATH=/payouts/{id}
+PAYOUT_SIGNATURE_HEADER=x-signature
 ```
 
-Default runtime: `http://localhost:3000`
+No payout provider is active unless explicitly configured. Never put service-role keys, master keys, provider secrets, webhook secrets, or full bank account numbers in Browser/GitHub.
 
-Important pages:
+## Important pages
 
 ```text
 /index.html            Merchant Login / Home
-/backoffice.html       Full AI Backoffice
-/billing.html          Membership + AI Token Wallet
-/payouts.html          Payout Accounts + Withdrawals
+/backoffice.html       AI Backoffice
+/billing.html          Membership + AI Tokens
+/payouts.html          Store Balance + Payout Accounts + Withdrawals
 /commerce-admin.html   SalePage + Payment Link Builder
-/store.html            Public Storefront (Store catalog)
+/store.html            Public Storefront
 /sale.html             Public SalePage / Checkout
-/pay.html              Public Payment Link page
+/pay.html              Public Payment Link
 ```
 
-APIs:
+## Core APIs
 
 ```text
 GET  /api/health
 POST /api/ai/command
-GET  /api/billing/store/:storeId?merchantId=...
-POST /api/billing/subscription
-POST /api/billing/token-purchase
+
+GET  /api/payout/balance?merchantId=...&storeId=...
 GET  /api/payout/accounts?merchantId=...&storeId=...
 POST /api/payout/accounts
+POST /api/payout/accounts/verify
 POST /api/payout/accounts/default
 GET  /api/withdrawals?merchantId=...&storeId=...
 POST /api/withdrawals
-POST /api/webhooks/out
+POST /api/withdrawals/submit
+POST /api/webhooks/payout/:provider
+
 POST /api/webhooks/in/:provider
+POST /api/webhooks/out
 ```
 
-## Frontend ↔ Backoffice Source of Truth
+## One Database / Store Isolation
 
-หน้าบ้านและหลังบ้านต้องใช้ Database ชุดเดียวกันและห้ามมี catalog/order/payment state แยกคนละชุด
+All frontoffice and backoffice modules use the same PostgreSQL/Supabase database. Every store is separated by `store_id`, every Merchant by `merchant_id`, and RLS/backend authorization prevents cross-merchant reads.
 
-```text
-BACKOFFICE
-Store / Product / Content / SalePage
-        ↓ write
-PostgreSQL / Supabase
-        ↓ public publishable RPC
-STORE FRONT
-store.html?store=<store_slug>
-        ↓
-SalePage
-sale.html?store=<store_slug>&page=<page_slug>
-        ↓ checkout
-create_public_order()
-        ↓
-orders + order_items
-        ↓ read
-BACKOFFICE Orders / Dashboard
-        ↓
-Payment Intent / Provider
-        ↓
-Verified Webhook IN
-        ↓
-payment_transactions + orders = PAID
-        ↓
-BACKOFFICE updates from the same authoritative data
-```
+## Payment Fact
 
-`get_public_store_catalog()` exposes only Store=`PUBLISHED`, Product=`ACTIVE`, SalePage=`PUBLISHED` data required by the storefront. Draft/private backoffice data must never leak to anonymous users.
+Every generated QR/payment has one self-describing `payment_transactions` row containing the immutable store/order/product/amount/condition snapshot. Provider webhook can locate the transaction by `provider_transaction_id` or `payment_ref` without re-querying Product/Store context.
 
-### Publish behavior
-
-- Backoffice changes a Store/Product/SalePage in the same database.
-- Draft content remains backoffice-only.
-- Once Store is `PUBLISHED`, Product is `ACTIVE`, and a SalePage is `PUBLISHED`, the product appears on `store.html` automatically.
-- Product price/description changes in backoffice are reflected on the public storefront on the next read; the public browser is not the source of truth.
-- Customer checkout creates the Order in the same `orders` table that the backoffice reads.
-- Payment status changes only from trusted Provider/Webhook processing and is therefore reflected back into Orders/Dashboard automatically.
-
-## Payment Fact / QR Snapshot
-
-Every QR/payment transaction is self-describing in one `payment_transactions` row.
+## Store Money Flow
 
 ```text
-payment_ref
-merchant_id
-store_id + store_name_snapshot
-order_id + order_no_snapshot
-customer snapshot
-items_snapshot
-product_summary
-subtotal / discount / shipping / total
-purchase_conditions_snapshot
-sales_channel
-requested_at
-qr_payload / qr_expires_at
-provider_transaction_id
-status / paid_at
-```
-
-The commercial snapshot is immutable. Product/store master data may change later without changing what was sold in the historical payment record.
-
-## Store Payout Accounts & Withdrawals
-
-Each `store_id` may register at most **5 payout accounts**.
-
-```text
-Store
-→ Register payout account through trusted backend
-→ Full account number encrypted in Secret Store
-→ payout_accounts = PENDING_VERIFICATION
-→ Verification process
-→ ACTIVE + verified_at
-→ Eligible for withdrawal
-```
-
-Withdrawal flow:
-
-```text
-Merchant selects registered payout_account_id
-→ Backend checks same merchant_id + store_id
-→ Must be ACTIVE + verified
-→ Explicit confirmation
-→ withdrawal_requests = REQUESTED
-→ Risk / available-balance / hold review
-→ APPROVED
-→ Payout Provider / Bank
+Customer Payment
+→ Verified payment.paid webhook
+→ Payment Transaction = PAID
+→ idempotent store balance credit
+→ pending_balance
+→ Hold period
+→ available_balance
+→ Merchant selects verified payout account
+→ Withdrawal snapshot
+→ Atomic reserve: available → reserved
+→ Risk PASS
+→ Payout Provider
 → PROCESSING
-→ Trusted confirmation
-→ PAID
+→ Verified payout.paid webhook / authoritative provider response
+→ reserved decreases
+→ total_paid_out increases
 ```
 
-Rules:
-
-- Maximum 5 registered payout accounts per store (non-REMOVED records).
-- Withdrawal cannot accept an arbitrary bank account number; it must reference `payout_account_id`.
-- Full bank account number is never returned to browser after registration.
-- Destination bank/account snapshot and withdrawal amount are immutable after request creation.
-- Browser/AI cannot mark withdrawal `PAID`.
-- Disabling/removing an account prevents new withdrawals but does not alter historical withdrawal snapshots.
-
-## Current flows
-
-### Merchant / Backoffice
-Magic Link → Merchant onboarding → Backoffice → Store → Membership → AI Token Wallet → Product → Content → SalePage → Online Sales → Order → Payment → Withdrawal
-
-### Membership + AI Tokens
-Each `store_id` has its own monthly subscription and AI Token wallet.
+If Provider returns `FAILED/REJECTED/CANCELLED`:
 
 ```text
-Store
-→ Choose Subscription Plan
-→ Subscription Invoice PENDING
-→ Billing Payment Provider
-→ Verified Payment/Webhook
-→ Subscription ACTIVE
-→ Monthly AI Token Grant
-→ AI Enabled
+reserved → available
 ```
 
-AI usage:
+The release is idempotent, so retrying Provider events cannot return money twice.
+
+## Balance Source of Truth
+
+`store_balances` is the fast current balance row for each store:
 
 ```text
-Prompt
-→ Resolve Billing Store
-→ Check ACTIVE/TRIAL Subscription
-→ Check Token Balance
-→ Load SKILL.md + Billing Skill + Domain Skill
-→ AI Provider
-→ Measure actual Input/Output Tokens
-→ Atomic Token Deduction
-→ Usage Record + Token Ledger + AI Audit
+pending_balance
+available_balance
+reserved_balance
+total_paid_in
+total_fees
+total_paid_out
 ```
 
-When monthly + top-up balance is insufficient:
+`store_balance_ledger` is immutable history. Never recalculate the current withdrawal balance in the Browser by summing Orders or Transactions.
+
+## Payout Accounts
+
+- Maximum 5 registered accounts per Store.
+- Full account number is encrypted in Secret Store.
+- Browser sees only masked/last-4 data.
+- New account = `PENDING_VERIFICATION`.
+- Only `ACTIVE + verified_at` account may receive a withdrawal.
+- Withdrawal cannot accept an arbitrary bank account number.
+- Destination + amount + fee + net + currency are immutable after request creation.
+
+## Risk / Policy
+
+Per-store `store_payout_policies` supports:
 
 ```text
-AI Locked
-→ Select Token Pack
-→ Token Purchase PENDING
-→ Verified Payment
-→ Grant Top-up Token
-→ AI Unlocked
+hold_minutes
+min_withdrawal
+max_withdrawal_per_request
+daily_withdrawal_limit
+manual_review_above
+status
 ```
 
-Monthly Token resets per billing period. Purchased Top-up Token is stored separately and is not cleared by monthly reset. Price, monthly quota, and Token Pack values are configurable in `subscription_plans` and `token_packs`; they are not hard-coded in the Skill.
+If a request hits manual-review policy it remains `REVIEWING` and cannot be submitted to Provider until trusted operations approval is implemented.
 
-### AI
-Prompt → Master SKILL.md + Core Billing Skill + Domain Skill → Subscription/Token Check → Intent → Permission/Risk Check → Domain Service → Token Meter → AI Audit → Event Bus
+## Authority Rules
 
-### Public Storefront
-Backoffice publishes Store + Product + SalePage → `store.html?store=<store_slug>` reads `get_public_store_catalog()` → customer selects product → SalePage → Checkout
+Browser and AI cannot mark any of these as final `PAID`:
 
-### SalePage
-Backoffice/Commerce Manager → Publish Store + SalePage → `sale.html?store=<store_slug>&page=<page_slug>` → Customer Checkout → `orders` + `order_items` → `PENDING`
+- Commerce payment
+- Subscription invoice
+- Token purchase
+- Withdrawal
 
-### Payment Link
-Backoffice/Commerce Manager → Payment Link → `pay.html?link=<slug>` → Customer details → Order record → `PENDING`
+Final status requires verified Provider/bank confirmation or a trusted reconciliation path.
 
-### Payment
-Order PENDING → Payment Provider Adapter → Payment Fact Snapshot → Payment Intent / QR → Customer Payment → Webhook IN → Verify Signature → Find one Payment Fact row → Validate Amount/Currency → Transaction PAID → Order PAID → Event Bus → Webhook OUT / Automation
+## Production checklist
 
-### Webhook OUT
-Merchant creates HTTPS Endpoint via trusted backend → Server generates signing secret → secret encrypted server-side → Event → HMAC signed delivery → retry/log/dead-letter
+Before real money production, configure and test end-to-end:
 
-## Stock rule
-
-Anonymous `PENDING` checkout does **not** decrement stock after `checkout-hardening.sql`. Stock mutation must happen in a trusted paid/reservation flow.
-
-## Payment, Billing and Withdrawal Authority
-
-Neither Browser, AI Prompt, `store.html`, `sale.html`, `pay.html`, `billing.html`, nor `payouts.html` can mark payments, subscriptions, invoices, token purchases, or withdrawals as `PAID`.
-
-Only a trusted backend receiving verified Provider/bank confirmation or reconciliation may:
-
-- mark commerce payment `PAID`
-- mark subscription invoice `PAID`
-- activate a subscription
-- grant monthly AI Tokens
-- mark Token Pack purchase `PAID`
-- grant Top-up Tokens
-- mark withdrawal `PAID`
-
-## Before public production traffic
-
-Add/verify:
-
-- Bot protection (Turnstile or equivalent)
-- API/edge rate limiting
-- order abuse/fraud detection
-- checkout idempotency key
-- inventory reservation / expiry
-- concrete Payment Provider Adapter
-- recurring/subscription billing support or monthly invoice collection
-- verified billing webhook routing to subscription/token grant services
-- payout account ownership verification workflow
-- available-balance/hold ledger before approving withdrawals
-- concrete payout/bank Provider Adapter
-- withdrawal risk/AML controls and payout reconciliation
-- signed Provider webhook verification with raw-body handling
-- secret rotation policy
-- outbound webhook queue/worker rather than in-request delivery
-- delivery replay tooling and dead-letter operations
-- AI usage reconciliation against provider usage reports
-- observability/alerts
-- backup/recovery and retention policies
-
-Do not treat Commerce/Payment/Billing/Payout V1 as production payment processing until Provider Adapters, account verification, balance controls, webhook verification and operational controls are configured and tested end-to-end.
+- concrete Payment Provider adapter
+- concrete Payout/Bank Provider adapter
+- payout account ownership verification
+- signed raw-body webhook verification
+- risk/AML rules and operational review
+- refund/chargeback balance reversal
+- provider reconciliation
+- idempotency and replay tests
+- rate limits and fraud controls
+- queue/worker for webhook/payout jobs
+- audit/alerts/backups
