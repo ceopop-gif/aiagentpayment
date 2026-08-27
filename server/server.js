@@ -52,6 +52,7 @@ const server = createServer(async (req, res) => {
         prompt: body.prompt,
         context: body.context || {},
         adapters: getPaymentProviders(),
+        secretStore,
         dispatchOutbound,
         runAutomations,
         confirmationToken: body.confirmationToken || null
