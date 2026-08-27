@@ -6,6 +6,7 @@ Run these files in Supabase SQL Editor in this exact order:
 2. `policies.sql`
 3. `onboarding.sql`
 4. `commerce.sql`
+5. `checkout-hardening.sql`
 
 Then put the **public** Supabase Project URL and **public anon key** into root `config.js`.
 
@@ -27,6 +28,10 @@ Commerce Manager → Publish Store + SalePage → `sale.html?store=<store_slug>&
 
 ### Payment Link
 Commerce Manager → Payment Link → `pay.html?link=<slug>` → Customer details → Order record → `PENDING`
+
+## Stock rule
+
+`checkout-hardening.sql` replaces the first checkout function so an anonymous `PENDING` order does **not** decrement stock. Stock mutation must happen in the trusted payment-confirmation flow or through a proper reservation system.
 
 ## Payment rule
 
