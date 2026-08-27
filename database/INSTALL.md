@@ -9,6 +9,7 @@ Run these files in Supabase SQL Editor in this exact order:
 5. `checkout-hardening.sql`
 6. `backoffice.sql`
 7. `secrets.sql`
+8. `billing.sql`
 
 Then put only the **public** Supabase Project URL and **public anon key** into root `config.js`.
 
@@ -23,6 +24,8 @@ ANNYPAY_MASTER_KEY
 AI_GATEWAY_URL
 AI_GATEWAY_API_KEY
 AI_MODEL
+AI_DEFAULT_MAX_OUTPUT_TOKENS
+BILLING_PROVIDER
 PAYMENT_* variables required by the connected Provider Adapter
 ```
 
@@ -52,6 +55,7 @@ Important pages:
 ```text
 /index.html            Merchant Login / Home
 /backoffice.html       Full AI Backoffice
+/billing.html          Membership + AI Token Wallet
 /commerce-admin.html   SalePage + Payment Link Builder
 /sale.html             Public SalePage
 /pay.html              Public Payment Link page
@@ -62,6 +66,9 @@ APIs:
 ```text
 GET  /api/health
 POST /api/ai/command
+GET  /api/billing/store/:storeId?merchantId=...
+POST /api/billing/subscription
+POST /api/billing/token-purchase
 POST /api/webhooks/out
 POST /api/webhooks/in/:provider
 ```
@@ -69,10 +76,51 @@ POST /api/webhooks/in/:provider
 ## Current flows
 
 ### Merchant / Backoffice
-Magic Link → Merchant onboarding → Backoffice → Store → Product → Content → SalePage → Online Sales → Order → Payment
+Magic Link → Merchant onboarding → Backoffice → Store → Membership → AI Token Wallet → Product → Content → SalePage → Online Sales → Order → Payment
+
+### Membership + AI Tokens
+Each `store_id` has its own monthly subscription and AI Token wallet.
+
+```text
+Store
+→ Choose Subscription Plan
+→ Subscription Invoice PENDING
+→ Billing Payment Provider
+→ Verified Payment/Webhook
+→ Subscription ACTIVE
+→ Monthly AI Token Grant
+→ AI Enabled
+```
+
+AI usage:
+
+```text
+Prompt
+→ Resolve Billing Store
+→ Check ACTIVE/TRIAL Subscription
+→ Check Token Balance
+→ Load SKILL.md + Billing Skill + Domain Skill
+→ AI Provider
+→ Measure actual Input/Output Tokens
+→ Atomic Token Deduction
+→ Usage Record + Token Ledger + AI Audit
+```
+
+When monthly + top-up balance is insufficient:
+
+```text
+AI Locked
+→ Select Token Pack
+→ Token Purchase PENDING
+→ Verified Payment
+→ Grant Top-up Token
+→ AI Unlocked
+```
+
+Monthly Token resets per billing period. Purchased Top-up Token is stored separately and is not cleared by monthly reset. Price, monthly quota, and Token Pack values are configurable in `subscription_plans` and `token_packs`; they are not hard-coded in the Skill.
 
 ### AI
-Prompt → Master SKILL.md + Domain Skill → Intent → Permission/Risk Check → Domain Service → AI Audit → Event Bus
+Prompt → Master SKILL.md + Core Billing Skill + Domain Skill → Subscription/Token Check → Intent → Permission/Risk Check → Domain Service → Token Meter → AI Audit → Event Bus
 
 ### SalePage
 Backoffice/Commerce Manager → Publish Store + SalePage → `sale.html?store=<store_slug>&page=<page_slug>` → Customer Checkout → `orders` + `order_items` → `PENDING`
@@ -90,11 +138,18 @@ Merchant creates HTTPS Endpoint via trusted backend → Server generates signing
 
 Anonymous `PENDING` checkout does **not** decrement stock after `checkout-hardening.sql`. Stock mutation must happen in a trusted paid/reservation flow.
 
-## Payment rule
+## Payment and Billing Authority
 
-Neither Browser, AI Prompt, `sale.html`, nor `pay.html` can mark a payment as `PAID`.
+Neither Browser, AI Prompt, `sale.html`, `pay.html`, nor `billing.html` can mark payments, subscriptions, invoices, or token purchases as `PAID`.
 
-Only a trusted backend receiving a verified Payment Provider webhook/reconciliation may write authoritative payment state.
+Only a trusted backend receiving a verified Payment Provider webhook/reconciliation may:
+
+- mark commerce payment `PAID`
+- mark subscription invoice `PAID`
+- activate a subscription
+- grant monthly AI Tokens
+- mark Token Pack purchase `PAID`
+- grant Top-up Tokens
 
 ## Before public production traffic
 
@@ -106,11 +161,14 @@ Add/verify:
 - checkout idempotency key
 - inventory reservation / expiry
 - concrete Payment Provider Adapter
+- recurring/subscription billing support or monthly invoice collection
+- verified billing webhook routing to subscription/token grant services
 - signed Provider webhook verification with raw-body handling
 - secret rotation policy
 - outbound webhook queue/worker rather than in-request delivery
 - delivery replay tooling and dead-letter operations
+- AI usage reconciliation against provider usage reports
 - observability/alerts
 - backup/recovery and retention policies
 
-Do not treat Commerce/Payment V1 as production payment processing until the Provider Adapter, webhook verification and operational controls are configured and tested end-to-end.
+Do not treat Commerce/Payment/Billing V1 as production payment processing until the Provider Adapter, billing verification, webhook verification and operational controls are configured and tested end-to-end.
