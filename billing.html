@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AnnyPay Membership & AI Tokens</title>
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+.billing-hero{display:grid;grid-template-columns:1.2fr .8fr;gap:14px}.token-bar{height:13px;background:#eef0f2;border-radius:999px;overflow:hidden}.token-bar>div{height:100%;background:#10a37f;width:0;transition:.25s}.plan-grid,.pack-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.plan-card,.pack-card{padding:18px}.price{font-size:28px;font-weight:800}.token-big{font-size:36px;font-weight:900}.subtle{font-size:12px;color:#6b7280}.billing-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.store-select{min-width:220px;padding:9px 11px;border:1px solid #e5e7eb;border-radius:11px;background:#fff}@media(max-width:900px){.billing-hero,.plan-grid,.pack-grid{grid-template-columns:1fr}} 
+</style>
+</head>
+<body>
+<div class="content" style="max-width:1250px">
+  <div class="pagehead">
+    <div><h1>Membership & AI Tokens</h1><p>สมาชิกคิดรายเดือนต่อร้าน และ AI Token แยกตามร้าน</p></div>
+    <div class="billing-top"><select id="billingStore" class="store-select"></select><a href="backoffice.html" class="btn">← Backoffice</a></div>
+  </div>
+  <div id="billingMessage" class="hidden"></div>
+
+  <div class="billing-hero">
+    <div class="panel card">
+      <div class="pagehead" style="margin-bottom:10px"><div><h3 style="margin:0">AI Token Balance</h3><p id="periodText">-</p></div><span id="subscriptionStatus" class="badge gray">NO PLAN</span></div>
+      <div class="token-big" id="tokenTotal">0</div>
+      <div class="subtle">Token พร้อมใช้</div>
+      <div class="token-bar" style="margin:15px 0 10px"><div id="tokenProgress"></div></div>
+      <div class="grid4">
+        <div class="metric"><span>โควตารายเดือน</span><b id="tokenGranted">0</b></div>
+        <div class="metric"><span>ใช้ไปแล้ว</span><b id="tokenUsed">0</b></div>
+        <div class="metric"><span>เหลือรายเดือน</span><b id="tokenMonthly">0</b></div>
+        <div class="metric"><span>Token ซื้อเพิ่ม</span><b id="tokenTopup">0</b></div>
+      </div>
+    </div>
+    <div class="panel card">
+      <h3>สมาชิกปัจจุบัน</h3>
+      <div class="item"><span>Plan</span><b id="currentPlan">ยังไม่ได้เลือก</b></div>
+      <div class="item"><span>ค่ารายเดือน</span><b id="currentFee">-</b></div>
+      <div class="item"><span>สถานะ</span><b id="currentStatus">NO PLAN</b></div>
+      <div class="item"><span>รอบบิลถัดไป</span><b id="nextBilling">-</b></div>
+      <p class="muted" style="font-size:12px">เมื่อสมาชิกหมดอายุ ระบบจะหยุด AI Generation ใหม่ แต่ยังคงให้ร้านดู Order และรับ Webhook Payment ที่มีอยู่ได้</p>
+    </div>
+  </div>
+
+  <div class="pagehead" style="margin-top:24px"><div><h2>แพ็กเกจรายเดือน</h2><p>ราคาและ Token กำหนดจาก Database ไม่ Hard-code ใน AI</p></div></div>
+  <div id="plans" class="plan-grid"></div>
+
+  <div class="pagehead" style="margin-top:24px"><div><h2>ซื้อ AI Token เพิ่ม</h2><p>Token Pack จะเข้ากระเป๋าหลัง Payment ถูก Verify แล้วเท่านั้น</p></div></div>
+  <div id="packs" class="pack-grid"></div>
+
+  <div class="grid2" style="margin-top:24px">
+    <div class="panel tablewrap"><table class="table"><thead><tr><th>Invoice</th><th>Period</th><th>Amount</th><th>Status</th></tr></thead><tbody id="invoiceBody"></tbody></table></div>
+    <div class="panel tablewrap"><table class="table"><thead><tr><th>Token</th><th>Amount</th><th>Status</th><th>Created</th></tr></thead><tbody id="purchaseBody"></tbody></table></div>
+  </div>
+</div>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/billing.js"></script>
+</body>
+</html>
