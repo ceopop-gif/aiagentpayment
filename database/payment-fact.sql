@@ -66,6 +66,52 @@ $$;
 
 grant execute on function public.find_payment_fact(text) to authenticated;
 
+-- Commercial snapshot fields are evidence of what was sold at QR creation time.
+-- They cannot be rewritten later when product/store masters change.
+create or replace function public.lock_payment_fact_snapshot()
+returns trigger
+language plpgsql
+as $$
+begin
+  if old.payment_ref is distinct from new.payment_ref
+     or old.merchant_id is distinct from new.merchant_id
+     or old.store_id is distinct from new.store_id
+     or old.store_name_snapshot is distinct from new.store_name_snapshot
+     or old.order_id is distinct from new.order_id
+     or old.order_no_snapshot is distinct from new.order_no_snapshot
+     or old.customer_id is distinct from new.customer_id
+     or old.customer_name_snapshot is distinct from new.customer_name_snapshot
+     or old.customer_phone_snapshot is distinct from new.customer_phone_snapshot
+     or old.sales_channel is distinct from new.sales_channel
+     or old.sale_page_id is distinct from new.sale_page_id
+     or old.payment_link_id is distinct from new.payment_link_id
+     or old.amount is distinct from new.amount
+     or old.currency is distinct from new.currency
+     or old.item_count is distinct from new.item_count
+     or old.quantity_total is distinct from new.quantity_total
+     or old.product_summary is distinct from new.product_summary
+     or old.items_snapshot is distinct from new.items_snapshot
+     or old.subtotal_snapshot is distinct from new.subtotal_snapshot
+     or old.discount_snapshot is distinct from new.discount_snapshot
+     or old.shipping_snapshot is distinct from new.shipping_snapshot
+     or old.purchase_conditions_snapshot is distinct from new.purchase_conditions_snapshot
+     or old.shipping_address_snapshot is distinct from new.shipping_address_snapshot
+     or old.requested_at is distinct from new.requested_at
+     or old.qr_payload is distinct from new.qr_payload
+     or old.qr_expires_at is distinct from new.qr_expires_at
+     or old.provider_metadata is distinct from new.provider_metadata
+  then
+    raise exception 'PAYMENT_FACT_SNAPSHOT_IMMUTABLE';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_lock_payment_fact_snapshot on public.payment_transactions;
+create trigger trg_lock_payment_fact_snapshot
+before update on public.payment_transactions
+for each row execute function public.lock_payment_fact_snapshot();
+
 comment on column public.payment_transactions.items_snapshot is
 'Immutable commercial item snapshot at payment/QR creation time. Do not rewrite when product master changes.';
 comment on column public.payment_transactions.purchase_conditions_snapshot is
