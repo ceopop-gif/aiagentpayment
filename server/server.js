@@ -14,6 +14,10 @@ import { registerWebhook } from './services/webhook-service.js';
 import { runAutomationsForEvent } from './automation/runner.js';
 import { getStoreBilling, createTokenPurchaseOrder } from './services/billing-service.js';
 import { startStoreSubscription } from './services/subscription-service.js';
+import {
+  listPayoutAccounts, registerPayoutAccount, setDefaultPayoutAccount,
+  requestWithdrawal, listWithdrawals
+} from './services/payout-service.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -39,6 +43,7 @@ const server = createServer(async (req, res) => {
         database: true,
         ai: Boolean(aiProvider),
         billing: true,
+        payouts: true,
         paymentProviders: Object.keys(getPaymentProviders())
       });
     }
@@ -110,6 +115,92 @@ const server = createServer(async (req, res) => {
       });
     }
 
+    if (url.pathname === '/api/payout/accounts' && req.method === 'GET') {
+      const user = await authenticate(req);
+      const merchantId = url.searchParams.get('merchantId');
+      const storeId = url.searchParams.get('storeId');
+      if (!merchantId || !storeId) return json(res, 400, { error: 'merchantId and storeId are required' });
+      const result = await listPayoutAccounts({ admin, merchantId, userId: user.id, storeId });
+      return json(res, 200, { accounts: result, max_accounts: 5 });
+    }
+
+    if (url.pathname === '/api/payout/accounts' && req.method === 'POST') {
+      const user = await authenticate(req);
+      const body = await readJson(req);
+      if (!body.merchantId || !body.storeId) return json(res, 400, { error: 'merchantId and storeId are required' });
+      const result = await registerPayoutAccount({
+        admin,
+        merchantId: body.merchantId,
+        userId: user.id,
+        storeId: body.storeId,
+        input: {
+          bankCode: body.bankCode,
+          bankName: body.bankName,
+          accountName: body.accountName,
+          accountNumber: body.accountNumber,
+          accountType: body.accountType
+        },
+        secretStore
+      });
+      return json(res, 201, {
+        account: result,
+        next_step: 'VERIFY_PAYOUT_ACCOUNT',
+        warning: 'This account cannot receive withdrawals until it is verified and ACTIVE.'
+      });
+    }
+
+    if (url.pathname === '/api/payout/accounts/default' && req.method === 'POST') {
+      const user = await authenticate(req);
+      const body = await readJson(req);
+      if (!body.merchantId || !body.storeId || !body.payoutAccountId || body.confirm !== true) {
+        return json(res, 400, { error: 'merchantId, storeId, payoutAccountId and confirm=true are required' });
+      }
+      const result = await setDefaultPayoutAccount({
+        admin, merchantId: body.merchantId, userId: user.id,
+        storeId: body.storeId, payoutAccountId: body.payoutAccountId
+      });
+      return json(res, 200, result);
+    }
+
+    if (url.pathname === '/api/withdrawals' && req.method === 'GET') {
+      const user = await authenticate(req);
+      const merchantId = url.searchParams.get('merchantId');
+      const storeId = url.searchParams.get('storeId');
+      if (!merchantId || !storeId) return json(res, 400, { error: 'merchantId and storeId are required' });
+      const result = await listWithdrawals({ admin, merchantId, userId: user.id, storeId, limit: url.searchParams.get('limit') || 50 });
+      return json(res, 200, { withdrawals: result });
+    }
+
+    if (url.pathname === '/api/withdrawals' && req.method === 'POST') {
+      const user = await authenticate(req);
+      const body = await readJson(req);
+      if (!body.merchantId || !body.storeId || !body.payoutAccountId || !body.amount) {
+        return json(res, 400, { error: 'merchantId, storeId, payoutAccountId and amount are required' });
+      }
+      if (body.confirm !== true) {
+        return json(res, 409, {
+          error: 'WITHDRAWAL_CONFIRMATION_REQUIRED',
+          message: 'Withdrawal is a high-risk action. Submit again with confirm=true after showing the selected registered account and amount to the user.'
+        });
+      }
+      const result = await requestWithdrawal({
+        admin,
+        merchantId: body.merchantId,
+        userId: user.id,
+        storeId: body.storeId,
+        payoutAccountId: body.payoutAccountId,
+        amount: Number(body.amount),
+        fee: Number(body.fee || 0),
+        currency: body.currency || 'THB',
+        metadata: body.metadata || {}
+      });
+      return json(res, 201, {
+        withdrawal: result,
+        next_step: 'RISK_AND_BALANCE_REVIEW',
+        warning: 'REQUESTED is not PAID. Final payout status requires trusted provider/bank confirmation.'
+      });
+    }
+
     if (url.pathname === '/api/webhooks/out' && req.method === 'POST') {
       const user = await authenticate(req);
       const body = await readJson(req);
@@ -146,10 +237,12 @@ const server = createServer(async (req, res) => {
     return serveStatic(url.pathname, res);
   } catch (error) {
     console.error(error);
-    const billingCode = error.code || error.message || '';
+    const code = error.code || error.message || '';
     const status = /Unauthorized/.test(error.message) ? 401
       : /Forbidden/.test(error.message) ? 403
-      : /SUBSCRIPTION_REQUIRED|SUBSCRIPTION_EXPIRED|INSUFFICIENT_AI_TOKENS/.test(billingCode) ? 402
+      : /SUBSCRIPTION_REQUIRED|SUBSCRIPTION_EXPIRED|INSUFFICIENT_AI_TOKENS/.test(code) ? 402
+      : /STORE_PAYOUT_ACCOUNT_LIMIT_REACHED/.test(code) ? 409
+      : /PAYOUT_ACCOUNT_NOT_VERIFIED_ACTIVE|PAYOUT_ACCOUNT_STORE_MISMATCH|PAYOUT_ACCOUNT_NOT_YET_AVAILABLE/.test(code) ? 422
       : 500;
     return json(res, status, {
       error: status === 500 ? 'internal_error' : (error.code || error.message),
@@ -162,7 +255,8 @@ const server = createServer(async (req, res) => {
 server.listen(port, () => {
   console.log(`AnnyPay running on http://localhost:${port}`);
   console.log(`AI Gateway: ${aiProvider ? 'configured' : 'not configured'}`);
-  console.log(`Billing: enabled`);
+  console.log('Billing: enabled');
+  console.log('Payout accounts: max 5 per store');
   console.log(`Payment Providers: ${Object.keys(getPaymentProviders()).join(', ') || 'none'}`);
 });
 
