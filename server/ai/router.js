@@ -5,6 +5,10 @@ import { createProduct, updateProduct } from '../services/product-service.js';
 import { generateContent, approveContent } from '../services/content-service.js';
 import { createSalePage, publishSalePage } from '../services/salepage-service.js';
 import { createPaymentIntent } from '../services/payment-service.js';
+import { createPaymentLink } from '../services/payment-link-service.js';
+import { getOrder, salesReport } from '../services/order-service.js';
+import { registerWebhook, testWebhook } from '../services/webhook-service.js';
+import { createAutomationRule } from '../services/automation-service.js';
 
 const HIGH_RISK = new Set([
   'REFUND_PAYMENT','CANCEL_PAYMENT','CHANGE_SETTLEMENT_ACCOUNT',
@@ -29,6 +33,7 @@ export async function executeAiCommand({
   prompt,
   context = {},
   adapters = {},
+  secretStore,
   dispatchOutbound,
   runAutomations,
   confirmationToken = null
@@ -40,7 +45,7 @@ export async function executeAiCommand({
   if (aiProvider?.classifyIntent) {
     const skill = await buildSkillContext();
     classification = await aiProvider.classifyIntent({
-      system: 'You are Anny AI Command Router. Return only structured intent data and follow the supplied skill.',
+      system: 'You are Anny AI Command Router. Return structured intent data only and follow the supplied skill.',
       skill,
       prompt,
       merchantContext: context
@@ -74,7 +79,7 @@ export async function executeAiCommand({
   try {
     const result = await dispatchIntent({
       intent, parameters, admin, aiProvider, merchantId, userId,
-      adapters, dispatchOutbound, runAutomations
+      adapters, secretStore, dispatchOutbound, runAutomations
     });
 
     return auditAndReturn(admin, {
@@ -108,7 +113,13 @@ async function dispatchIntent(ctx) {
     case 'APPROVE_CONTENT': return approveContent({ ...common, contentId: ctx.parameters.contentId });
     case 'CREATE_SALEPAGE': return createSalePage({ ...common, input: ctx.parameters });
     case 'PUBLISH_SALEPAGE': return publishSalePage({ ...common, salePageId: ctx.parameters.salePageId });
+    case 'CREATE_PAYMENT_LINK': return createPaymentLink({ ...common, input: ctx.parameters });
     case 'CREATE_PAYMENT_INTENT': return createPaymentIntent({ ...common, orderId: ctx.parameters.orderId, provider: ctx.parameters.provider, adapters: ctx.adapters });
+    case 'CHECK_ORDER': return getOrder({ admin:ctx.admin, merchantId:ctx.merchantId, userId:ctx.userId, orderNo:ctx.parameters.orderNo });
+    case 'SALES_REPORT': return salesReport({ admin:ctx.admin, merchantId:ctx.merchantId, userId:ctx.userId, from:ctx.parameters.from, to:ctx.parameters.to });
+    case 'CREATE_WEBHOOK_ENDPOINT': return registerWebhook({ admin:ctx.admin, merchantId:ctx.merchantId, userId:ctx.userId, input:ctx.parameters, secretStore:ctx.secretStore });
+    case 'TEST_WEBHOOK': return testWebhook({ admin:ctx.admin, merchantId:ctx.merchantId, userId:ctx.userId, endpointId:ctx.parameters.endpointId, secretStore:ctx.secretStore });
+    case 'CREATE_AUTOMATION': return createAutomationRule({ admin:ctx.admin, merchantId:ctx.merchantId, userId:ctx.userId, input:ctx.parameters });
     default: throw new Error(`Intent ${ctx.intent} is registered but its service handler is not implemented yet`);
   }
 }
@@ -130,11 +141,16 @@ async function auditAndReturn(admin, { merchantId, userId, prompt, intent, domai
 
 function fallbackIntent(prompt) {
   const p = prompt.toLowerCase();
-  if (/สร้างร้าน|create store/.test(p)) return { intent:'CREATE_STORE', parameters:{ storeName: extractAfter(prompt, 'ชื่อ') || null }, missing:['storeName'].filter(x => !extractAfter(prompt, 'ชื่อ')) };
+  const name = extractAfter(prompt, 'ชื่อ');
+  if (/สร้างร้าน|create store/.test(p)) return { intent:'CREATE_STORE', parameters:{ storeName:name||null }, missing:name?[]:['storeName'] };
   if (/เพิ่มสินค้า|สร้างสินค้า|create product/.test(p)) return { intent:'CREATE_PRODUCT', parameters:{}, missing:['storeId','productName','price'] };
   if (/คอนเทนต์|content|แคปชั่น|headline|โฆษณา/.test(p)) return { intent:'CREATE_CONTENT', parameters:{ contentType:'SALEPAGE_COPY', prompt }, missing:['productId'] };
   if (/salepage|หน้าขาย/.test(p)) return { intent:'CREATE_SALEPAGE', parameters:{}, missing:['storeId','productId'] };
+  if (/payment link|ลิงก์รับเงิน|ลิงค์รับเงิน/.test(p)) return { intent:'CREATE_PAYMENT_LINK', parameters:{}, missing:['amount','description'] };
   if (/payment intent|เปิดรับเงิน/.test(p)) return { intent:'CREATE_PAYMENT_INTENT', parameters:{}, missing:['orderId','provider'] };
+  if (/order|ออเดอร์|คำสั่งซื้อ/.test(p)) return { intent:'CHECK_ORDER', parameters:{}, missing:['orderNo'] };
+  if (/ยอดขาย|sales report|ขายได้เท่า/.test(p)) return { intent:'SALES_REPORT', parameters:{}, missing:[] };
+  if (/webhook/.test(p)) return { intent:'CREATE_WEBHOOK_ENDPOINT', parameters:{}, missing:['name','url','events'] };
   return { intent:null, parameters:{}, missing:[] };
 }
 
