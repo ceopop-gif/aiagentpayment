@@ -62,11 +62,29 @@ export async function processInboundPaymentWebhook({
     return { status: 200, body: { ok: true, duplicate: true } };
   }
 
-  const { data: tx, error: txError } = await admin.from('payment_transactions')
-    .select('id,merchant_id,order_id,amount,currency,status')
-    .eq('provider', provider)
-    .eq('provider_transaction_id', normalized.providerTransactionId)
-    .maybeSingle();
+  // Payment Fact row: no Order/Store/Product JOIN is required to understand the purchase.
+  let txQuery = admin.from('payment_transactions').select(`
+    id,payment_ref,merchant_id,store_id,store_name_snapshot,
+    order_id,order_no_snapshot,customer_id,customer_name_snapshot,customer_phone_snapshot,
+    provider,provider_transaction_id,amount,currency,status,requested_at,paid_at,
+    sales_channel,sale_page_id,payment_link_id,item_count,quantity_total,product_summary,
+    items_snapshot,subtotal_snapshot,discount_snapshot,shipping_snapshot,
+    purchase_conditions_snapshot,shipping_address_snapshot,qr_expires_at,provider_metadata
+  `).eq('provider', provider);
+
+  if (normalized.providerTransactionId) {
+    txQuery = txQuery.eq('provider_transaction_id', normalized.providerTransactionId);
+  } else if (normalized.paymentRef) {
+    txQuery = txQuery.eq('payment_ref', normalized.paymentRef);
+  } else {
+    await upsertInbound(admin, {
+      merchantId: null, provider, normalized, rawBody,
+      status: 'QUARANTINED', errorMessage: 'No provider transaction id or payment reference'
+    });
+    return { status: 202, body: { ok: true, quarantined: true } };
+  }
+
+  const { data: tx, error: txError } = await txQuery.maybeSingle();
   if (txError) throw txError;
 
   if (!tx) {
@@ -102,12 +120,16 @@ export async function processInboundPaymentWebhook({
     return { status: 200, body: { ok: true, ignored: true } };
   }
 
-  const txPatch = { status: mapping.payment, raw_provider_data: normalized.raw || safePayload(rawBody) };
+  const txPatch = {
+    status: mapping.payment,
+    raw_provider_data: normalized.raw || safePayload(rawBody)
+  };
   if (mapping.payment === 'PAID') txPatch.paid_at = normalized.occurredAt || new Date().toISOString();
 
   const { error: updateTxError } = await admin.from('payment_transactions').update(txPatch).eq('id', tx.id);
   if (updateTxError) throw updateTxError;
 
+  // Direct update by the order_id already stored in the same Payment Fact row. No lookup is needed.
   if (tx.order_id) {
     const { error: orderError } = await admin.from('orders').update({
       payment_status: mapping.payment,
@@ -129,17 +151,31 @@ export async function processInboundPaymentWebhook({
     resourceId: tx.id,
     data: {
       transaction_id: tx.id,
-      order_id: tx.order_id,
+      payment_ref: tx.payment_ref,
       provider,
-      provider_transaction_id: normalized.providerTransactionId,
+      provider_transaction_id: tx.provider_transaction_id,
+      merchant_id: tx.merchant_id,
+      store_id: tx.store_id,
+      store_name: tx.store_name_snapshot,
+      order_id: tx.order_id,
+      order_no: tx.order_no_snapshot,
+      products: tx.items_snapshot,
+      product_summary: tx.product_summary,
+      quantity_total: tx.quantity_total,
       amount: tx.amount,
       currency: tx.currency,
+      subtotal: tx.subtotal_snapshot,
+      discount: tx.discount_snapshot,
+      shipping: tx.shipping_snapshot,
+      purchase_conditions: tx.purchase_conditions_snapshot,
+      requested_at: tx.requested_at,
+      paid_at: txPatch.paid_at || tx.paid_at || null,
       status: mapping.payment
     }
   });
 
   await publishEvent({ admin, event, dispatchOutbound, runAutomations });
-  return { status: 200, body: { ok: true } };
+  return { status: 200, body: { ok: true, payment_ref: tx.payment_ref } };
 }
 
 async function upsertInbound(admin, { merchantId, provider, normalized, rawBody, status, errorMessage }) {
