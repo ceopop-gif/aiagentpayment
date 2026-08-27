@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#111827">
+<title>AnnyPay System Activity Logs</title>
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+.log-layout{display:grid;grid-template-columns:270px minmax(0,1fr);min-height:100vh}.log-side{background:#111827;color:#fff;padding:18px 14px;position:sticky;top:0;height:100vh}.log-side a{display:block;color:#d1d5db;text-decoration:none;padding:11px 12px;border-radius:10px;margin-top:5px}.log-side a:hover,.log-side a.active{background:#1f2937;color:#fff}.logo-row{display:flex;align-items:center;gap:10px;margin-bottom:20px}.logo-a{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#10a37f,#16c79a);display:grid;place-items:center;font-weight:900}.log-main{min-width:0}.log-top{height:68px;background:#fff;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;padding:0 22px;position:sticky;top:0;z-index:5}.log-content{padding:22px;max-width:1600px;margin:auto}.filters{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:10px}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:14px 0}.summary .panel{padding:16px}.summary b{display:block;font-size:25px;margin-top:5px}.tabs{display:flex;gap:8px;margin:14px 0}.tabs button.active{background:#111827;color:#fff}.log-table td{vertical-align:top}.event{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}.who{max-width:220px;white-space:normal}.route{max-width:280px;white-space:normal;word-break:break-word}.detail{max-width:420px;white-space:normal}.sev-ERROR,.sev-CRITICAL{color:#b91c1c;font-weight:700}.sev-WARN{color:#b45309;font-weight:700}.sev-INFO{color:#047857}.session-active{color:#047857;font-weight:700}.session-logged_out,.session-expired,.session-revoked{color:#6b7280}.jsonbox{white-space:pre-wrap;word-break:break-word;background:#111827;color:#e5e7eb;padding:12px;border-radius:12px;max-height:360px;overflow:auto;font-size:12px}.modal{position:fixed;inset:0;background:rgba(0,0,0,.48);display:grid;place-items:center;padding:16px;z-index:50}.modal-card{background:#fff;border-radius:18px;max-width:900px;width:100%;max-height:90vh;overflow:auto;padding:18px}.hidden{display:none!important}@media(max-width:1050px){.filters{grid-template-columns:repeat(3,1fr)}.summary{grid-template-columns:repeat(2,1fr)}}@media(max-width:760px){.log-layout{grid-template-columns:1fr}.log-side{display:none}.log-content{padding:14px}.filters{grid-template-columns:1fr 1fr}.summary{grid-template-columns:1fr 1fr}.log-top{padding:0 14px}}
+</style>
+</head>
+<body>
+<div class="log-layout">
+<aside class="log-side">
+  <div class="logo-row"><div class="logo-a">A</div><div><b>AnnyPay</b><small style="display:block;color:#9ca3af">Security & Audit</small></div></div>
+  <a href="backoffice.html">← กลับหลังบ้าน</a>
+  <a class="active" href="activity-logs.html">☷ Activity Logs</a>
+  <a href="payouts.html">฿ Payout & Withdrawal</a>
+  <a href="billing.html">◈ Membership & Tokens</a>
+</aside>
+
+<main class="log-main">
+<header class="log-top">
+  <div><strong>System Activity Logs</strong><div class="muted" style="font-size:12px">หน้าบ้าน · หลังบ้าน · Login · API · AI · Payment · Webhook · Payout</div></div>
+  <div><select id="merchantSelect"></select> <button id="refreshBtn" class="btn">รีเฟรช</button></div>
+</header>
+
+<div class="log-content">
+  <div id="message" class="hidden"></div>
+  <div class="pagehead"><div><h1>ใครทำอะไร เมื่อไร ที่ส่วนไหน</h1><p>Log เป็นแบบ Append-only และไม่บันทึก Password, Token, Secret, เลขบัญชีเต็ม หรือข้อมูลบัตร</p></div><button id="exportBtn" class="btn">Export CSV ที่โหลดอยู่</button></div>
+
+  <form id="filterForm" class="panel card filters">
+    <div class="field"><label>Store</label><select id="storeFilter"><option value="">ทุกร้าน</option></select></div>
+    <div class="field"><label>Source</label><select id="sourceFilter"><option value="">ทุกส่วน</option><option>AUTH</option><option>FRONTEND</option><option>BACKOFFICE</option><option>API</option><option>DATABASE</option><option>AI</option><option>PAYMENT</option><option>PAYOUT</option><option>BILLING</option><option>WEBHOOK</option><option>SECURITY</option><option>SYSTEM</option></select></div>
+    <div class="field"><label>Severity</label><select id="severityFilter"><option value="">ทุกระดับ</option><option>INFO</option><option>NOTICE</option><option>WARN</option><option>ERROR</option><option>CRITICAL</option></select></div>
+    <div class="field"><label>Event</label><input id="eventFilter" placeholder="เช่น AUTH, PAYMENT"></div>
+    <div class="field"><label>ตั้งแต่</label><input id="fromFilter" type="datetime-local"></div>
+    <div class="field"><label>ถึง</label><input id="toFilter" type="datetime-local"></div>
+    <div><button class="btn primary" type="submit">ค้นหา Log</button></div>
+  </form>
+
+  <div class="summary">
+    <div class="panel"><span class="muted">Logs ที่โหลด</span><b id="logCount">0</b></div>
+    <div class="panel"><span class="muted">Warning / Error</span><b id="errorCount">0</b></div>
+    <div class="panel"><span class="muted">Session ที่ Active</span><b id="activeSessions">0</b></div>
+    <div class="panel"><span class="muted">Login ล่าสุด</span><b id="lastLogin" style="font-size:16px">-</b></div>
+  </div>
+
+  <div class="tabs"><button class="btn active" data-tab="logs">Activity Logs</button><button class="btn" data-tab="sessions">Login Sessions</button></div>
+
+  <section id="logsTab" class="panel tablewrap">
+    <table class="table log-table">
+      <thead><tr><th>เวลา</th><th>Source / Severity</th><th>Event</th><th>ใคร</th><th>Store / Resource</th><th>Route / Result</th><th>รายละเอียด</th></tr></thead>
+      <tbody id="logsBody"></tbody>
+    </table>
+  </section>
+
+  <section id="sessionsTab" class="panel tablewrap hidden">
+    <table class="table">
+      <thead><tr><th>Login</th><th>ผู้ใช้</th><th>Store</th><th>Source</th><th>Last Seen</th><th>Logout</th><th>Status</th><th>Client</th></tr></thead>
+      <tbody id="sessionsBody"></tbody>
+    </table>
+  </section>
+</div>
+</main>
+</div>
+
+<div id="detailModal" class="modal hidden">
+  <div class="modal-card"><div class="pagehead"><div><h2>Log Detail</h2><p id="detailTitle"></p></div><button id="closeDetail" class="btn">ปิด</button></div><pre id="detailJson" class="jsonbox"></pre></div>
+</div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/activity-logs.js"></script>
+</body>
+</html>
