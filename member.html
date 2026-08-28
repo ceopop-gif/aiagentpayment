@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b7a60">
+<title>สมาชิก AnnyPay</title>
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+:root{--member-green:#0b7a60;--member-green-2:#10a37f;--member-ink:#10231d;--member-soft:#eefaf6}
+body{background:#f5f7f6;padding-bottom:82px}.member-shell{max-width:1180px;margin:auto;padding:18px}.member-top{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:4px 0 18px}.member-brand{display:flex;align-items:center;gap:11px}.member-logo{width:44px;height:44px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,var(--member-green-2),#20c997);color:#fff;font-weight:900;font-size:21px;box-shadow:0 8px 20px rgba(16,163,127,.22)}.member-brand strong{font-size:20px}.member-brand small{display:block;color:#6b7280}.account-pill{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #e5e7eb;border-radius:999px;padding:7px 9px 7px 12px;max-width:48%}.account-pill span{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.avatar{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#ecfdf5;color:#047857;font-weight:800}.member-hero{position:relative;overflow:hidden;border-radius:26px;padding:26px;background:linear-gradient(135deg,#0b5f4c 0%,#0b7a60 52%,#10a37f 100%);color:#fff;box-shadow:0 18px 46px rgba(11,122,96,.2)}.member-hero:after{content:"";position:absolute;width:260px;height:260px;border-radius:50%;right:-85px;top:-115px;background:rgba(255,255,255,.1)}.hero-row{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:flex-start;gap:20px}.eyebrow{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#c9f8e8}.member-hero h1{font-size:34px;line-height:1.2;margin:8px 0 8px}.member-hero p{margin:0;color:#dcfff3}.hero-status{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:18px;padding:13px 15px;min-width:180px}.hero-status small{display:block;color:#c9f8e8;margin-bottom:4px}.hero-status b{font-size:17px}.hero-actions{position:relative;z-index:1;display:flex;gap:9px;flex-wrap:wrap;margin-top:22px}.hero-actions a{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.13);color:#fff;text-decoration:none;padding:10px 14px;border-radius:12px;font-weight:700}.hero-actions a.primary-light{background:#fff;color:#08785f;border-color:#fff}.section-title{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:24px 2px 12px}.section-title h2{margin:0;font-size:20px}.section-title p{margin:4px 0 0;color:#6b7280;font-size:13px}.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.member-metric{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:17px;box-shadow:0 6px 22px rgba(0,0,0,.035)}.member-metric small{color:#6b7280}.member-metric b{display:block;font-size:25px;margin-top:6px}.member-metric .mini{font-size:11px;color:#059669;margin-top:5px}.shortcut-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}.shortcut{display:block;text-decoration:none;color:#171717;background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:17px;min-height:126px;transition:.18s;box-shadow:0 6px 22px rgba(0,0,0,.03)}.shortcut:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.06)}.shortcut-icon{width:42px;height:42px;border-radius:13px;background:var(--member-soft);display:grid;place-items:center;font-size:20px;margin-bottom:12px}.shortcut b{display:block}.shortcut small{display:block;color:#6b7280;line-height:1.45;margin-top:4px}.member-grid{display:grid;grid-template-columns:1.08fr .92fr;gap:13px}.member-card{background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:20px;box-shadow:0 8px 28px rgba(0,0,0,.035)}.member-card h3{margin:0 0 14px}.plan-line{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #f0f1f2}.plan-line:last-child{border-bottom:0}.plan-line span{color:#6b7280}.status-stack{display:grid;gap:10px}.status-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 13px;background:#fafafa;border-radius:14px}.status-item b{font-size:13px}.status-chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 9px;background:#f3f4f6;color:#4b5563;font-size:11px}.status-chip.ok{background:#ecfdf5;color:#047857}.status-chip.warn{background:#fff7ed;color:#c2410c}.token-wrap{background:#f5fbf8;border:1px solid #d8f3e9;border-radius:16px;padding:15px;margin-top:14px}.token-row{display:flex;justify-content:space-between;gap:10px;align-items:flex-end}.token-row b{font-size:27px}.token-bar-member{height:9px;border-radius:999px;background:#dceae5;overflow:hidden;margin-top:11px}.token-bar-member>div{height:100%;width:0;background:#10a37f;transition:.25s}.recent-card{background:#fff;border:1px solid #e5e7eb;border-radius:20px;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.035)}.recent-head{padding:18px 20px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center}.recent-head h3{margin:0}.recent-head a{font-size:13px;color:#08785f;text-decoration:none;font-weight:700}.member-table{width:100%;border-collapse:collapse}.member-table th,.member-table td{padding:13px 18px;text-align:left;border-bottom:1px solid #f0f1f2}.member-table th{font-size:11px;color:#6b7280;background:#fbfbfb}.member-table td{font-size:13px}.member-table tr:last-child td{border-bottom:0}.member-bottom{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:40;width:min(620px,calc(100% - 20px));display:grid;grid-template-columns:repeat(5,1fr);background:rgba(255,255,255,.94);backdrop-filter:blur(16px);border:1px solid #e5e7eb;border-radius:20px;box-shadow:0 14px 38px rgba(0,0,0,.14);padding:7px}.member-bottom a{text-decoration:none;color:#6b7280;text-align:center;padding:7px 3px;border-radius:13px;font-size:10px}.member-bottom a b{display:block;font-size:18px;line-height:1.1;margin-bottom:4px}.member-bottom a.active{background:#ecfdf5;color:#047857}.member-message{margin:0 0 14px}.logout-link{border:0;background:transparent;color:#6b7280;padding:6px 4px;font-size:12px}.empty-member{padding:24px;text-align:center;color:#6b7280}.desktop-only{display:table-cell}
+@media(max-width:900px){.metric-grid,.shortcut-grid{grid-template-columns:repeat(2,1fr)}.member-grid{grid-template-columns:1fr}.member-hero h1{font-size:29px}.hero-row{flex-direction:column}.hero-status{min-width:0;width:100%}}
+@media(max-width:620px){.member-shell{padding:12px}.member-top{padding-bottom:12px}.account-pill{max-width:56%;padding-left:9px}.member-brand small{display:none}.member-logo{width:40px;height:40px}.member-hero{padding:20px;border-radius:22px}.member-hero h1{font-size:26px}.hero-actions{display:grid;grid-template-columns:1fr 1fr}.hero-actions a{text-align:center}.metric-grid{grid-template-columns:1fr 1fr;gap:9px}.member-metric{padding:14px}.member-metric b{font-size:21px}.shortcut-grid{grid-template-columns:1fr 1fr;gap:9px}.shortcut{padding:14px;min-height:116px}.member-card{padding:16px}.member-table th,.member-table td{padding:12px}.desktop-only{display:none}.section-title{margin-top:20px}.section-title h2{font-size:18px}}
+</style>
+</head>
+<body>
+<div class="member-shell">
+  <header class="member-top">
+    <div class="member-brand"><div class="member-logo">A</div><div><strong>AnnyPay</strong><small>Member Center</small></div></div>
+    <div class="account-pill"><span id="memberEmail">สมาชิก AnnyPay</span><div class="avatar" id="memberAvatar">A</div></div>
+  </header>
+
+  <div id="memberMessage" class="hidden member-message"></div>
+
+  <section class="member-hero">
+    <div class="hero-row">
+      <div><div class="eyebrow">ANNYPAY MEMBER</div><h1>สวัสดี <span id="welcomeName">สมาชิก AnnyPay</span> 👋</h1><p>จัดการร้าน ขายสินค้า รับเงิน และใช้ AI ได้จากศูนย์สมาชิกเดียว</p></div>
+      <div class="hero-status"><small>สถานะสมาชิก</small><b id="heroMemberStatus">กำลังตรวจสอบ...</b></div>
+    </div>
+    <div class="hero-actions">
+      <a class="primary-light" href="backoffice.html">✨ เปิด Anny AI</a>
+      <a href="commerce-admin.html">สร้าง SalePage</a>
+      <a href="billing.html">แพ็กเกจสมาชิก</a>
+    </div>
+  </section>
+
+  <div class="section-title"><div><h2>ภาพรวมวันนี้</h2><p>ข้อมูลจริงของ Merchant ที่กำลังใช้งาน</p></div></div>
+  <section class="metric-grid">
+    <div class="member-metric"><small>ยอดขายวันนี้</small><b id="memberSales">฿0</b><div class="mini">เฉพาะ Payment สำเร็จ</div></div>
+    <div class="member-metric"><small>Orders วันนี้</small><b id="memberOrders">0</b><div class="mini">รายการทั้งหมดวันนี้</div></div>
+    <div class="member-metric"><small>ร้านของฉัน</small><b id="memberStores">0</b><div class="mini">Store ในบัญชีนี้</div></div>
+    <div class="member-metric"><small>AI Token</small><b id="memberTokens">0</b><div class="mini">Token พร้อมใช้งาน</div></div>
+  </section>
+
+  <div class="section-title"><div><h2>เมนูใช้งานด่วน</h2><p>ทำงานหลักได้ในไม่กี่ขั้นตอน</p></div></div>
+  <section class="shortcut-grid">
+    <a class="shortcut" href="index.html"><div class="shortcut-icon">🏪</div><b>ร้านและสินค้า</b><small>สร้างร้าน เพิ่มสินค้า และดู Dashboard</small></a>
+    <a class="shortcut" href="commerce-admin.html"><div class="shortcut-icon">🧾</div><b>SalePage</b><small>สร้างหน้าขายและ Payment Link</small></a>
+    <a class="shortcut" href="billing.html"><div class="shortcut-icon">✨</div><b>สมาชิก & AI</b><small>ดูแพ็กเกจ รอบบิล และ AI Token</small></a>
+    <a class="shortcut" href="payouts.html"><div class="shortcut-icon">💳</div><b>เงินของร้าน</b><small>ยอดคงเหลือ บัญชีรับเงิน และถอนเงิน</small></a>
+  </section>
+
+  <div class="section-title"><div><h2>บัญชีสมาชิก</h2><p>สถานะร้านและสิทธิ์การใช้งาน</p></div></div>
+  <section class="member-grid">
+    <div class="member-card">
+      <h3>แพ็กเกจปัจจุบัน</h3>
+      <div class="plan-line"><span>Plan</span><b id="memberPlan">ยังไม่มีแพ็กเกจ</b></div>
+      <div class="plan-line"><span>สถานะ</span><b id="memberPlanStatus">NO PLAN</b></div>
+      <div class="plan-line"><span>รอบบิลถัดไป</span><b id="memberNextBilling">-</b></div>
+      <div class="token-wrap"><div class="token-row"><div><small class="muted">AI Token พร้อมใช้</small><b id="memberTokenBig">0</b></div><a class="btn primary" href="billing.html">จัดการแพ็กเกจ</a></div><div class="token-bar-member"><div id="memberTokenProgress"></div></div></div>
+    </div>
+    <div class="member-card">
+      <h3>สถานะระบบ</h3>
+      <div class="status-stack">
+        <div class="status-item"><b>Merchant</b><span id="merchantChip" class="status-chip">-</span></div>
+        <div class="status-item"><b>ยืนยันตัวตน KYC</b><span id="kycChip" class="status-chip">-</span></div>
+        <div class="status-item"><b>Payment</b><span id="paymentChip" class="status-chip">-</span></div>
+      </div>
+      <p class="muted" style="font-size:12px;line-height:1.6;margin:14px 0 0">ระบบรับเงินจริงจะเปิดเมื่อ Merchant, KYC และ Payment Provider ผ่านสถานะที่กำหนด</p>
+    </div>
+  </section>
+
+  <div class="section-title"><div><h2>Orders ล่าสุด</h2><p>รายการขายล่าสุดของบัญชีนี้</p></div></div>
+  <section class="recent-card">
+    <div class="recent-head"><h3>รายการล่าสุด</h3><a href="index.html">ดูทั้งหมด →</a></div>
+    <div style="overflow:auto"><table class="member-table"><thead><tr><th>Order</th><th>ยอด</th><th>Payment</th><th class="desktop-only">Status</th></tr></thead><tbody id="memberRecentOrders"><tr><td colspan="4" class="empty-member">กำลังโหลดข้อมูล...</td></tr></tbody></table></div>
+  </section>
+
+  <div style="text-align:center;padding:22px 0 8px"><button id="memberLogout" class="logout-link" type="button">ออกจากระบบ</button></div>
+</div>
+
+<nav class="member-bottom" aria-label="เมนูสมาชิก">
+  <a class="active" href="member.html"><b>⌂</b>หน้าหลัก</a>
+  <a href="index.html"><b>▣</b>ร้านค้า</a>
+  <a href="commerce-admin.html"><b>◇</b>SalePage</a>
+  <a href="payouts.html"><b>฿</b>การเงิน</a>
+  <a href="billing.html"><b>◎</b>สมาชิก</a>
+</nav>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/member.js"></script>
+</body>
+</html>
