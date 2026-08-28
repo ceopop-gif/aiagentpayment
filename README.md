@@ -2,11 +2,23 @@
 
 **AI Operating System for Commerce & Payment**
 
-**Flow:** Prompt → Store → Product → Content → SalePage → Checkout → Payment → Store Balance → Withdrawal → Settlement / Automation → Unified Audit
+**Flow:** Customer Registration → Merchant → Store → Product → Content → SalePage → Checkout → Payment → Store Balance → Withdrawal → Settlement / Automation → Unified Audit
+
+## Live customer registration
+
+Production preview: `https://annypay-ai-commerce-ceopop-1344.vercel.app`
+
+The landing page now starts with a mobile-friendly three-step customer registration flow:
+
+1. User account and contact information
+2. Store/business profile and optional referral code
+3. Starter option, consent, and entry to the merchant dashboard
+
+When public Supabase configuration is not set, the page runs in clearly marked demo mode. Demo data remains in the customer's device and the password is not persisted. Real customer accounts require Supabase Auth, the merchant bootstrap database function, email configuration, and production privacy/terms documents.
 
 ## Main pages
 
-- `index.html` — Merchant Login / Onboarding
+- `index.html` — Customer/Merchant Registration, Login and Onboarding
 - `backoffice.html` — Full AI Backoffice
 - `activity-logs.html` — Activity Logs + Login Sessions
 - `billing.html` — Membership + AI Token Wallet
