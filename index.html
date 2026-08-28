@@ -2,46 +2,171 @@
 <html lang="th">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#111827">
-<title>AnnyPay AI Commerce</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<meta name="description" content="สมัครใช้งาน AnnyPay ระบบ AI Commerce + Payment สำหรับผู้ประกอบการ">
+<title>สมัครใช้งาน AnnyPay</title>
 <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
 <section id="configScreen" class="hidden">
-  <div class="auth-shell">
+  <div class="auth-shell config-layout">
     <div class="auth-hero">
-      <div class="brand"><div class="logo">A</div><div><strong>AnnyPay</strong><div class="muted">AI Commerce + Payment</div></div></div>
-      <div><h1>เชื่อม Database แล้วเริ่มใช้ระบบจริง</h1><p>เชื่อม Supabase เพื่อเปิด Merchant, Store, Product, Order และ Dashboard แบบข้อมูลจริง</p></div>
-      <small>ใช้เฉพาะ Supabase Project URL และ Public Anon Key เท่านั้น</small>
+      <div class="brand"><div class="logo">A</div><div><strong>AnnyPay</strong><div class="hero-muted">AI Commerce + Payment</div></div></div>
+      <div>
+        <span class="eyebrow">SYSTEM SETUP</span>
+        <h1>เชื่อมฐานข้อมูลเพื่อเปิดใช้บัญชีจริง</h1>
+        <p>หน้านี้สำหรับผู้ดูแลระบบเท่านั้น กรุณาใช้เฉพาะ Supabase Project URL และ Public Anon Key</p>
+      </div>
+      <small>ห้ามใส่ Service Role, Payment Secret หรือ Private Key ในหน้าเว็บ</small>
     </div>
     <div class="auth-panel">
       <form id="configForm" class="auth-card form-stack">
-        <div><h2>เชื่อม Supabase</h2><p class="muted">ค่าทั้งสองเป็น Public browser config</p></div>
+        <div><h2>เชื่อม Supabase</h2><p class="muted">ค่าทั้งสองเป็น Public browser configuration</p></div>
         <div id="configMessage" class="hidden"></div>
-        <div class="field"><label>Supabase Project URL</label><input id="configUrl" placeholder="https://xxxx.supabase.co" required></div>
-        <div class="field"><label>Supabase Anon Key</label><input id="configKey" placeholder="Public anon key" required></div>
+        <div class="field"><label for="configUrl">Supabase Project URL</label><input id="configUrl" placeholder="https://xxxx.supabase.co" required></div>
+        <div class="field"><label for="configKey">Supabase Anon Key</label><input id="configKey" placeholder="Public anon key" required></div>
         <button class="btn primary block" type="submit">เชื่อม Database</button>
         <button class="btn block" type="button" id="clearConfig">ล้างค่าที่บันทึกในเครื่อง</button>
+        <a class="text-link center" href="./">กลับหน้าสมัคร</a>
       </form>
     </div>
   </div>
 </section>
 
 <section id="authScreen" class="hidden">
-  <div class="auth-shell">
-    <div class="auth-hero">
-      <div class="brand"><div class="logo">A</div><div><strong>AnnyPay</strong><div class="muted">Prompt to Payment</div></div></div>
-      <div><h1>AI Operating System สำหรับ Commerce & Payment</h1><p>เข้าใช้งานด้วย Magic Link ทางอีเมล แล้วจัดการธุรกิจทั้งหมดจากระบบเดียว</p></div>
-      <small>AnnyPay AI Commerce Console</small>
+  <div class="signup-shell">
+    <div class="signup-hero">
+      <div class="brand hero-brand">
+        <div class="logo">A</div>
+        <div><strong>AnnyPay</strong><div class="hero-muted">AI Commerce + Payment</div></div>
+      </div>
+
+      <div class="hero-copy">
+        <span class="eyebrow">PROMPT TO PAYMENT</span>
+        <h1>เริ่มขายออนไลน์<br>พร้อมรับชำระเงิน<br><span>ในระบบเดียว</span></h1>
+        <p>สมัครครั้งเดียว แล้วให้ Anny ช่วยสร้างร้าน สินค้า SalePage และเตรียมระบบ Payment สำหรับธุรกิจของคุณ</p>
+
+        <div class="benefit-list">
+          <div class="benefit"><span>✓</span><div><b>สมัครง่าย ไม่ต้องมีความรู้เทคนิค</b><small>เริ่มต้นด้วยข้อมูลพื้นฐานของคุณและร้านค้า</small></div></div>
+          <div class="benefit"><span>✓</span><div><b>สร้างร้านและหน้าขายด้วย AI</b><small>เพิ่มรูป ราคา และบอก Anny ว่าต้องการขายอะไร</small></div></div>
+          <div class="benefit"><span>✓</span><div><b>เตรียมเปิด Payment อย่างเป็นขั้นตอน</b><small>ทำ KYC และเชื่อมช่องทางรับเงินภายหลังในหลังบ้าน</small></div></div>
+        </div>
+      </div>
+
+      <div class="hero-flow" aria-label="ขั้นตอนการเริ่มต้น">
+        <div><span>1</span><b>สมัคร</b></div><i></i>
+        <div><span>2</span><b>สร้างร้าน</b></div><i></i>
+        <div><span>3</span><b>เปิดขาย</b></div><i></i>
+        <div><span>4</span><b>รับเงิน</b></div>
+      </div>
     </div>
-    <div class="auth-panel">
-      <form id="authForm" class="auth-card form-stack">
-        <div><h2>เข้าใช้งาน AnnyPay</h2><p class="muted">กรอกอีเมล ระบบจะส่ง Magic Link ให้</p></div>
-        <div id="authMessage" class="hidden"></div>
-        <div class="field"><label>Email</label><input id="authEmail" type="email" autocomplete="email" required></div>
-        <button id="authSubmit" class="btn primary block" type="submit">ส่งลิงก์เข้าใช้งาน</button>
-      </form>
+
+    <div class="signup-panel">
+      <div class="mobile-brand brand">
+        <div class="logo">A</div>
+        <div><strong>AnnyPay</strong><div class="muted">AI Commerce + Payment</div></div>
+      </div>
+
+      <div class="auth-card registration-card">
+        <div class="card-topline">
+          <div>
+            <span class="eyebrow dark">WELCOME TO ANNYPAY</span>
+            <h2>เปิดบัญชีธุรกิจของคุณ</h2>
+            <p class="muted">ใช้เวลาเพียงไม่กี่ขั้นตอน</p>
+          </div>
+          <span class="free-badge">เริ่มต้นฟรี</span>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="สมัครหรือเข้าสู่ระบบ">
+          <button id="signupTab" class="active" type="button" role="tab" aria-selected="true">สมัครใช้งาน</button>
+          <button id="loginTab" type="button" role="tab" aria-selected="false">เข้าสู่ระบบ</button>
+        </div>
+
+        <div id="demoNotice" class="demo-note hidden">
+          <b>โหมดตัวอย่าง</b> ข้อมูลสมัครจะบันทึกเฉพาะในอุปกรณ์นี้ และจะไม่บันทึกรหัสผ่าน
+        </div>
+
+        <form id="signupForm" class="auth-form" novalidate>
+          <div id="signupMessage" class="hidden"></div>
+
+          <div class="step-header">
+            <div><span id="stepLabel">ขั้นตอน 1 จาก 3</span><b id="stepTitle">ข้อมูลบัญชีผู้ใช้</b></div>
+            <strong id="stepPercent">33%</strong>
+          </div>
+          <div class="progress"><span id="stepProgress"></span></div>
+          <div class="step-dots" aria-hidden="true">
+            <span class="active" data-dot="1">1</span>
+            <i></i>
+            <span data-dot="2">2</span>
+            <i></i>
+            <span data-dot="3">3</span>
+          </div>
+
+          <div class="signup-step" data-step="1">
+            <div class="field"><label for="signupName">ชื่อ-นามสกุล <em>*</em></label><input id="signupName" autocomplete="name" placeholder="เช่น สมชาย ใจดี" required></div>
+            <div class="field"><label for="signupPhone">เบอร์โทรศัพท์ <em>*</em></label><input id="signupPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="08x-xxx-xxxx" minlength="9" required></div>
+            <div class="field"><label for="signupEmail">อีเมล <em>*</em></label><input id="signupEmail" type="email" autocomplete="email" placeholder="name@example.com" required></div>
+            <div class="field"><label for="signupPassword">รหัสผ่าน <em>*</em></label><div class="password-wrap"><input id="signupPassword" type="password" autocomplete="new-password" placeholder="อย่างน้อย 8 ตัวอักษร" minlength="8" required><button class="password-toggle" type="button" data-target="signupPassword" aria-label="แสดงหรือซ่อนรหัสผ่าน">แสดง</button></div><small class="field-help">ควรมีอย่างน้อย 8 ตัวอักษร และไม่ใช้รหัสเดียวกับบัญชีสำคัญอื่น</small></div>
+          </div>
+
+          <div class="signup-step hidden" data-step="2">
+            <div class="field"><label for="signupBusinessName">ชื่อร้านหรือชื่อธุรกิจ <em>*</em></label><input id="signupBusinessName" placeholder="เช่น Healthy Coffee" required></div>
+            <div class="field"><label for="signupBusinessType">ประเภทธุรกิจ <em>*</em></label><select id="signupBusinessType" required><option value="">เลือกประเภทธุรกิจ</option><option value="ecommerce">ขายสินค้าออนไลน์ / E-commerce</option><option value="retail">ร้านค้าปลีก / มีหน้าร้าน</option><option value="restaurant">ร้านอาหารและเครื่องดื่ม</option><option value="service">ธุรกิจบริการ / จองบริการ</option><option value="education">อบรม / การศึกษา</option><option value="health_wellness">สุขภาพและ Wellness</option><option value="other">อื่น ๆ</option></select></div>
+            <fieldset class="field radio-field">
+              <legend>รูปแบบผู้สมัคร <em>*</em></legend>
+              <div class="choice-grid business-form-grid">
+                <label class="choice-card"><input type="radio" name="businessForm" value="individual" required checked><span><b>บุคคลธรรมดา</b><small>เจ้าของร้านหรือผู้ขายออนไลน์</small></span></label>
+                <label class="choice-card"><input type="radio" name="businessForm" value="company" required><span><b>นิติบุคคล</b><small>บริษัทหรือห้างหุ้นส่วน</small></span></label>
+              </div>
+            </fieldset>
+            <div class="field"><label for="referralCode">รหัสตัวแทน / ผู้แนะนำ <span class="optional">ไม่บังคับ</span></label><input id="referralCode" autocomplete="off" placeholder="กรอกเมื่อมีผู้แนะนำ"></div>
+          </div>
+
+          <div class="signup-step hidden" data-step="3">
+            <fieldset class="field radio-field">
+              <legend>คุณต้องการเริ่มต้นแบบไหน? <em>*</em></legend>
+              <div class="choice-grid plan-grid">
+                <label class="choice-card plan-card selected"><input type="radio" name="startPlan" value="starter" required checked><span class="plan-check">✓</span><span><b>เริ่มต้นใช้งาน</b><small>สร้างโปรไฟล์ร้าน ทดลองเพิ่มสินค้าและ SalePage</small></span><strong>ฟรี</strong></label>
+                <label class="choice-card plan-card"><input type="radio" name="startPlan" value="payment"><span class="plan-check">✓</span><span><b>พร้อมเปิดรับชำระ</b><small>สมัครก่อน แล้วทำ KYC และเชื่อม Payment ในหลังบ้าน</small></span><strong>แนะนำ</strong></label>
+                <label class="choice-card plan-card"><input type="radio" name="startPlan" value="multistore"><span class="plan-check">✓</span><span><b>หลายร้าน / ทีมงาน</b><small>เหมาะกับธุรกิจที่ต้องการหลาย Store หรือหลายผู้ดูแล</small></span><strong>ติดต่อทีม</strong></label>
+              </div>
+            </fieldset>
+
+            <label class="consent"><input id="termsConsent" type="checkbox" required><span>ฉันยอมรับ <a href="#" data-modal="terms">ข้อกำหนดการใช้งาน</a> และ <a href="#" data-modal="privacy">นโยบายความเป็นส่วนตัว</a> <em>*</em></span></label>
+            <label class="consent optional-consent"><input id="marketingConsent" type="checkbox"><span>ยินยอมรับข่าวสาร เทคนิคการขาย และสิทธิประโยชน์จาก AnnyPay</span></label>
+
+            <div class="security-note"><span>🔒</span><div><b>ข้อมูลของคุณได้รับการดูแลอย่างเหมาะสม</b><small>ระบบจะไม่ขอรหัส OTP, API Secret หรือข้อมูลบัตรในหน้าสมัครนี้</small></div></div>
+          </div>
+
+          <div class="form-actions">
+            <button id="signupBack" class="btn hidden" type="button">ย้อนกลับ</button>
+            <button id="signupNext" class="btn primary grow" type="button">ถัดไป</button>
+            <button id="signupSubmit" class="btn primary grow hidden" type="submit">สมัครและสร้างบัญชีธุรกิจ</button>
+          </div>
+        </form>
+
+        <form id="loginForm" class="auth-form hidden" novalidate>
+          <div id="loginMessage" class="hidden"></div>
+          <div class="login-intro"><h3>ยินดีต้อนรับกลับ</h3><p class="muted">เข้าสู่ระบบเพื่อจัดการร้านค้าและรายการขาย</p></div>
+          <div class="field"><label for="loginEmail">อีเมล</label><input id="loginEmail" type="email" autocomplete="email" required></div>
+          <div class="field"><label for="loginPassword">รหัสผ่าน</label><div class="password-wrap"><input id="loginPassword" type="password" autocomplete="current-password" minlength="8" required><button class="password-toggle" type="button" data-target="loginPassword">แสดง</button></div></div>
+          <button id="loginSubmit" class="btn primary block" type="submit">เข้าสู่หลังบ้าน</button>
+          <button id="magicLinkBtn" class="btn block" type="button">ส่ง Magic Link ทางอีเมล</button>
+          <p class="login-foot">ยังไม่มีบัญชี? <button id="goSignup" class="text-button" type="button">สมัครใช้งาน</button></p>
+        </form>
+
+        <div id="authSuccess" class="success-panel hidden" role="status">
+          <div class="success-icon">✓</div>
+          <h3 id="successTitle">สมัครสำเร็จ</h3>
+          <p id="successText" class="muted"></p>
+          <div id="successSummary" class="success-summary"></div>
+          <button id="enterDashboard" class="btn primary block" type="button">เข้าสู่หลังบ้าน AnnyPay</button>
+          <button id="successLogin" class="btn block hidden" type="button">ไปหน้าเข้าสู่ระบบ</button>
+        </div>
+
+        <div class="auth-footer">ต้องการความช่วยเหลือ? <a href="mailto:support@annypay.example">ติดต่อทีม AnnyPay</a></div>
+      </div>
     </div>
   </div>
 </section>
@@ -66,19 +191,19 @@
 <main class="main">
 <header class="topbar">
   <div class="row"><button id="mobileMenu" class="btn mobile">☰</button><strong id="pageTitle">Dashboard</strong></div>
-  <div class="top-actions"><span class="badge gray">Merchant <b id="merchantStatus">-</b></span><span class="badge gray">KYC <b id="kycStatus">-</b></span><span class="badge gray">Payment <b id="paymentStatus">-</b></span></div>
+  <div class="top-actions"><span id="environmentBadge" class="badge gray hidden">DEMO</span><span class="badge gray">Merchant <b id="merchantStatus">-</b></span><span class="badge gray desktop-status">KYC <b id="kycStatus">-</b></span><span class="badge gray desktop-status">Payment <b id="paymentStatus">-</b></span></div>
 </header>
 <div class="content">
 <div id="globalMessage" class="hidden"></div>
 <section id="onboarding" class="hidden">
   <form id="onboardingForm" class="panel onboarding form-stack">
-    <div><h2>สร้าง Merchant แรกของคุณ</h2><p class="muted">ระบบจะสร้าง Merchant Profile และ OWNER membership ลง Database</p></div>
+    <div><h2>สร้าง Merchant แรกของคุณ</h2><p class="muted">ตรวจสอบข้อมูลร้าน แล้วเปิด Dashboard</p></div>
     <div id="onboardMessage" class="hidden"></div>
     <div class="grid2">
-      <div class="field"><label>ชื่อธุรกิจ</label><input id="businessName" required></div>
-      <div class="field"><label>ประเภทธุรกิจ</label><select id="businessType"><option value="ecommerce">E-commerce</option><option value="retail">Retail</option><option value="service">Service</option><option value="restaurant">Restaurant</option></select></div>
-      <div class="field"><label>ชื่อเจ้าของ/ผู้ดูแล</label><input id="ownerName"></div>
-      <div class="field"><label>เบอร์โทร</label><input id="ownerPhone"></div>
+      <div class="field"><label for="businessName">ชื่อธุรกิจ</label><input id="businessName" required></div>
+      <div class="field"><label for="businessType">ประเภทธุรกิจ</label><select id="businessType"><option value="ecommerce">E-commerce</option><option value="retail">Retail</option><option value="service">Service</option><option value="restaurant">Restaurant</option><option value="health_wellness">Health & Wellness</option></select></div>
+      <div class="field"><label for="ownerName">ชื่อเจ้าของ/ผู้ดูแล</label><input id="ownerName"></div>
+      <div class="field"><label for="ownerPhone">เบอร์โทร</label><input id="ownerPhone"></div>
     </div>
     <button id="onboardSubmit" class="btn primary" type="submit">สร้าง Merchant และเปิด Dashboard</button>
   </form>
@@ -86,7 +211,18 @@
 
 <div id="merchantWorkspace" class="hidden">
 <section id="view-dashboard" class="view active">
-  <div class="pagehead"><div><h1>ภาพรวมธุรกิจ</h1><p>ข้อมูลดึงจาก Supabase จริงตาม Merchant ที่เลือก</p></div><span id="productCountText" class="badge gray">0 สินค้า</span></div>
+  <div class="welcome-panel panel">
+    <div><span class="eyebrow dark">WELCOME</span><h1>ยินดีต้อนรับสู่ AnnyPay 👋</h1><p>เริ่มจากสร้างร้าน เพิ่มสินค้า แล้วค่อยดำเนินการ KYC เพื่อเปิดรับชำระเงินจริง</p></div>
+    <button class="btn primary" type="button" data-go="stores">+ สร้างร้านแรก</button>
+  </div>
+
+  <div class="setup-panel panel">
+    <div class="setup-head"><div><h3>เริ่มต้นใช้งาน</h3><p class="muted" id="setupProgressText">ดำเนินการ 1 จาก 4 ขั้นตอน</p></div><b id="setupPercent">25%</b></div>
+    <div class="progress setup-progress"><span id="setupProgressBar"></span></div>
+    <div id="setupChecklist" class="setup-list"></div>
+  </div>
+
+  <div class="pagehead"><div><h1>ภาพรวมธุรกิจ</h1><p>ยอดขายและข้อมูลของ Merchant ที่เลือก</p></div><span id="productCountText" class="badge gray">0 สินค้า</span></div>
   <div class="grid4">
     <div class="panel metric"><span>ยอดขายวันนี้ (PAID)</span><b id="metricSales">฿0</b></div>
     <div class="panel metric"><span>Orders วันนี้</span><b id="metricOrders">0</b></div>
@@ -94,32 +230,32 @@
     <div class="panel metric"><span>จำนวนร้าน</span><b id="metricStores">0</b></div>
   </div>
   <div class="grid2" style="margin-top:14px">
-    <div class="panel card"><h3>Anny AI Ready</h3><div class="quick-grid"><div class="quick-card"><b>สร้างร้าน</b><span class="muted">บันทึก Store จริง</span></div><div class="quick-card"><b>เพิ่มสินค้า</b><span class="muted">Product + Stock จริง</span></div><div class="quick-card"><b>Payment</b><span class="muted">รอ Provider/Webhook จริง</span></div></div></div>
-    <div class="panel card"><h3>Payment Security</h3><p class="muted">หน้าเว็บไม่มีสิทธิ์เขียนสถานะ PAID, Refund หรือ Settlement โดยตรง การเขียนต้องผ่าน trusted backend เท่านั้น</p></div>
+    <div class="panel card"><h3>Anny AI Ready</h3><div class="quick-grid"><button class="quick-card" type="button" data-go="stores"><b>สร้างร้าน</b><span class="muted">เริ่มเปิดหน้าร้านของคุณ</span></button><button class="quick-card" type="button" data-go="products"><b>เพิ่มสินค้า</b><span class="muted">สินค้า ราคา และ Stock</span></button><button class="quick-card" type="button" data-go="settings"><b>เปิด Payment</b><span class="muted">ตรวจ KYC และสถานะบัญชี</span></button></div></div>
+    <div class="panel card"><h3>Payment Security</h3><p class="muted">หน้าเว็บไม่มีสิทธิ์กำหนดสถานะ PAID, Refund หรือ Settlement เอง สถานะเงินจริงต้องมาจาก Payment Provider หรือ trusted backend เท่านั้น</p></div>
   </div>
   <div class="panel tablewrap" style="margin-top:14px"><table class="table"><thead><tr><th>Order</th><th>ยอด</th><th>Payment</th><th>Status</th></tr></thead><tbody id="recentOrdersBody"></tbody></table></div>
 </section>
 
 <section id="view-stores" class="view">
-  <div class="pagehead"><div><h1>ร้านค้า</h1><p>สร้างร้านและบันทึกลงตาราง stores</p></div></div>
+  <div class="pagehead"><div><h1>ร้านค้า</h1><p>สร้างร้านและกำหนดชื่อสำหรับหน้าขาย</p></div></div>
   <form id="storeForm" class="panel card form-stack">
     <div id="storeMessage" class="hidden"></div>
-    <div class="grid2"><div class="field"><label>ชื่อร้าน</label><input id="storeName" required></div><div class="field"><label>รายละเอียด</label><input id="storeDescription"></div></div>
+    <div class="grid2"><div class="field"><label for="storeName">ชื่อร้าน</label><input id="storeName" required></div><div class="field"><label for="storeDescription">รายละเอียด</label><input id="storeDescription"></div></div>
     <div><button id="createStoreBtn" class="btn primary" type="submit">+ สร้างร้าน</button></div>
   </form>
   <div class="panel tablewrap" style="margin-top:14px"><table class="table"><thead><tr><th>ร้าน</th><th>Slug</th><th>Status</th><th>Domain</th></tr></thead><tbody id="storesBody"></tbody></table></div>
 </section>
 
 <section id="view-products" class="view">
-  <div class="pagehead"><div><h1>สินค้า</h1><p>เพิ่มสินค้า ราคา Stock และผูกกับ Store จริง</p></div></div>
+  <div class="pagehead"><div><h1>สินค้า</h1><p>เพิ่มสินค้า ราคา Stock และผูกกับ Store</p></div></div>
   <form id="productForm" class="panel card form-stack">
     <div id="productMessage" class="hidden"></div>
     <div class="grid2">
-      <div class="field"><label>ร้าน</label><select id="productStore"></select></div>
-      <div class="field"><label>ชื่อสินค้า</label><input id="productName" required></div>
-      <div class="field"><label>SKU</label><input id="productSku"></div>
-      <div class="field"><label>ราคา</label><input id="productPrice" type="number" min="0" step="0.01" required></div>
-      <div class="field"><label>Stock</label><input id="productStock" type="number" min="0" value="0"></div>
+      <div class="field"><label for="productStore">ร้าน</label><select id="productStore"></select></div>
+      <div class="field"><label for="productName">ชื่อสินค้า</label><input id="productName" required></div>
+      <div class="field"><label for="productSku">SKU</label><input id="productSku"></div>
+      <div class="field"><label for="productPrice">ราคา</label><input id="productPrice" type="number" min="0" step="0.01" required></div>
+      <div class="field"><label for="productStock">Stock</label><input id="productStock" type="number" min="0" value="0"></div>
     </div>
     <div><button id="createProductBtn" class="btn primary" type="submit">+ เพิ่มสินค้า</button></div>
   </form>
@@ -127,19 +263,28 @@
 </section>
 
 <section id="view-orders" class="view">
-  <div class="pagehead"><div><h1>Orders</h1><p>รายการ Order จาก Database จริง</p></div></div>
+  <div class="pagehead"><div><h1>Orders</h1><p>รายการคำสั่งซื้อของ Merchant</p></div></div>
   <div class="panel tablewrap"><table class="table"><thead><tr><th>Order</th><th>ยอด</th><th>Payment</th><th>Order Status</th><th>เวลา</th></tr></thead><tbody id="ordersBody"></tbody></table></div>
 </section>
 
 <section id="view-settings" class="view">
-  <div class="pagehead"><div><h1>ตั้งค่า</h1><p>สถานะ Account และ Merchant</p></div></div>
-  <div class="grid2"><div class="panel card"><h3>Account</h3><p>Email: <b id="settingsEmail">-</b></p><p>Role: <b id="settingsRole">-</b></p><p>Merchant: <b id="settingsMerchant">-</b></p></div><div class="panel card"><h3>Compliance</h3><p>Merchant: <b id="settingsMerchantStatus">-</b></p><p>KYC: <b id="settingsKyc">-</b></p><p>Payment: <b id="settingsPayment">-</b></p></div></div>
+  <div class="pagehead"><div><h1>ตั้งค่า</h1><p>สถานะ Account, Merchant, KYC และ Payment</p></div></div>
+  <div class="grid2"><div class="panel card"><h3>Account</h3><p>Email: <b id="settingsEmail">-</b></p><p>Role: <b id="settingsRole">-</b></p><p>Merchant: <b id="settingsMerchant">-</b></p></div><div class="panel card"><h3>Compliance</h3><p>Merchant: <b id="settingsMerchantStatus">-</b></p><p>KYC: <b id="settingsKyc">-</b></p><p>Payment: <b id="settingsPayment">-</b></p><p class="muted">การเปิดรับเงินจริงต้องผ่านการยืนยันตัวตนและการอนุมัติของผู้ให้บริการ Payment</p></div></div>
 </section>
 </div>
 </div>
 </main>
 </div>
 </section>
+
+<div id="infoModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-card">
+    <button id="closeModal" class="modal-close" type="button" aria-label="ปิด">×</button>
+    <h3 id="modalTitle"></h3>
+    <div id="modalBody" class="modal-body"></div>
+  </div>
+</div>
+
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/app-v2.js"></script>
